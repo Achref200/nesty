@@ -1,17 +1,51 @@
-# nestly
+# Nesty — Tunisian PropTech
 
-A new Flutter project.
+A trust‑ and 3D‑first housing platform for Tunisia.
 
-## Getting Started
+- **Mobile app** (`/` — Flutter): seekers browse homes, tour them in 3D, book a
+  visit or reserve; agencies (hosts) publish listings and track engagement.
+- **Web dashboard** (`/web` — Next.js): the agency (B2B) portal — listings,
+  reservations, calendar and analytics.
+- **Backend**: Supabase (Postgres + Auth + RLS + Realtime). Migrations in
+  `/supabase/migrations`.
+- **Image hosting**: Cloudinary.
+- **Tour3D service** (`/services/tour3d` — FastAPI): turns room photos into a
+  walkthrough video.
 
-This project is a starting point for a Flutter application.
+## Run the web dashboard
 
-A few resources to get you started if this is your first Flutter project:
+```bash
+cd web
+npm install
+cp .env.example .env.local   # then fill in the values
+npm run dev                  # http://localhost:3000
+```
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+Required env vars are listed in `web/.env.example` (Supabase + Cloudinary).
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## Run the mobile app
+
+```bash
+flutter pub get
+flutter run
+```
+
+## Database
+
+Apply the SQL migrations in `/supabase/migrations` in filename order using the
+Supabase SQL editor (init → location → analytics → rental_term_and_seed →
+demo_prototype_seed → storage → notifications).
+
+## Deploy the website (Vercel)
+
+1. Push this repo to GitHub.
+2. On https://vercel.com → New Project → import the repo.
+3. Set **Root Directory** to `web`.
+4. Add the environment variables from `web/.env.example` (keep
+   `CLOUDINARY_API_SECRET` without the `NEXT_PUBLIC_` prefix so it stays
+   server‑only).
+5. Deploy — Vercel gives a public URL viewable from any PC or phone and
+   auto‑deploys on every push to `main`.
+
+> The Flutter app is not a website — distribute it as an APK / TestFlight build;
+> only the `/web` dashboard is web‑hosted.
