@@ -42,3 +42,16 @@ android {
 flutter {
     source = "../.."
 }
+
+dependencies {
+    // Several Flutter plugins (geolocator, image_picker) reference recent
+    // androidx APIs. Force recent androidx versions app-wide so the classes
+    // (androidx.core.location.*, androidx.activity.result.*,
+    // androidx.exifinterface.media.*) resolve at compile time.
+    implementation("androidx.core:core:1.13.1")
+    implementation("androidx.core:core-ktx:1.13.1")
+    implementation("androidx.activity:activity:1.9.3")
+    implementation("androidx.activity:activity-ktx:1.9.3")
+    implementation("androidx.fragment:fragment:1.8.5")
+    implementation("androidx.exifinterface:exifinterface:1.3.7")
+}
