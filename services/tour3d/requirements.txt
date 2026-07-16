@@ -1,0 +1,16 @@
+# Tour3D generation service — dependencies
+# Ken Burns walkthrough pipeline (runs anywhere, no GPU):
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+pydantic==2.9.2
+pillow==10.4.0
+numpy==2.1.1
+imageio==2.35.1
+imageio-ffmpeg==0.5.1
+requests==2.32.3
+
+# Photogrammetry (mode="photogrammetry") is external tooling, not pip-installable
+# here. Install separately on a GPU host:
+#   - COLMAP            https://colmap.github.io/
+#   - nerfstudio        https://docs.nerf.studio/
+#   - gaussian-splatting https://github.com/graphdeco-inria/gaussian-splatting

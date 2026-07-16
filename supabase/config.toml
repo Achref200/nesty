@@ -1,0 +1,8 @@
+# Local project name used by the Supabase CLI. Link to your remote project with:
+#   supabase login
+#   supabase link --project-ref <your-project-ref>
+#   supabase db push
+project_id = "nesty"
+
+[db]
+major_version = 15

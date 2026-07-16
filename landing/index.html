@@ -1,0 +1,423 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Nesty — Tour before you visit</title>
+    <meta
+      name="description"
+      content="Nesty is Tunisia's PropTech for renting with confidence — tour every home in 3D, book a visit or reserve your summer dates, all in one calm place."
+    />
+
+    <!-- Design system: monochrome B/W + grey, Outfit (display) + Plus Jakarta Sans (body) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <style>
+      :root {
+        --paper: #fcfcfb;
+        --card: #ffffff;
+        --fill: #f1f1f0;
+        --ink: #141414;
+        --ink-soft: #3c3c3b;
+        --sep: #e6e6e4;
+        --label2: #7a7a78;
+        --label3: #b4b4b1;
+      }
+
+      * { box-sizing: border-box; }
+      html { scroll-behavior: smooth; }
+      body {
+        margin: 0;
+        background: var(--paper);
+        color: var(--ink);
+        font-family: "Plus Jakarta Sans", system-ui, sans-serif;
+        -webkit-font-smoothing: antialiased;
+        line-height: 1.5;
+        overflow-x: hidden;
+      }
+      h1, h2, h3, .display {
+        font-family: "Outfit", system-ui, sans-serif;
+        letter-spacing: -0.02em;
+        line-height: 1.04;
+        margin: 0;
+      }
+      a { color: inherit; text-decoration: none; }
+      .wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+
+      /* ---------- Nav ---------- */
+      .nav {
+        position: sticky; top: 0; z-index: 50;
+        backdrop-filter: saturate(180%) blur(14px);
+        background: rgba(252, 252, 251, 0.72);
+        border-bottom: 1px solid var(--sep);
+      }
+      .nav .row {
+        display: flex; align-items: center; gap: 12px;
+        height: 64px;
+      }
+      .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; font-family: "Outfit"; font-size: 20px; }
+      .mark {
+        width: 26px; height: 26px; border-radius: 8px; background: var(--ink);
+        display: grid; place-items: center; color: #fff;
+      }
+      .mark svg { width: 15px; height: 15px; }
+      .nav .spacer { flex: 1; }
+      .nav .links { display: flex; gap: 26px; color: var(--label2); font-weight: 600; font-size: 14px; }
+      .nav .links a:hover { color: var(--ink); }
+      .btn {
+        display: inline-flex; align-items: center; gap: 8px;
+        background: var(--ink); color: #fff; border: none;
+        font-family: inherit; font-weight: 700; font-size: 15px;
+        padding: 11px 18px; border-radius: 12px; cursor: pointer;
+        transition: transform 0.18s ease, opacity 0.18s ease;
+      }
+      .btn:hover { transform: translateY(-1px); }
+      .btn:active { transform: translateY(0); opacity: 0.9; }
+      .btn.ghost { background: var(--fill); color: var(--ink); }
+      @media (max-width: 720px) { .nav .links { display: none; } }
+
+      /* ---------- Hero ---------- */
+      .hero { position: relative; padding: 92px 0 72px; overflow: hidden; }
+      .hero .eyebrow {
+        display: inline-flex; align-items: center; gap: 8px;
+        background: var(--fill); color: var(--ink-soft);
+        font-size: 13px; font-weight: 700; letter-spacing: 0.02em;
+        padding: 7px 12px; border-radius: 999px; margin-bottom: 22px;
+      }
+      .hero h1 { font-size: clamp(40px, 7vw, 74px); font-weight: 800; }
+      .hero .caret { display: inline-block; width: 4px; height: 0.92em; background: var(--ink); margin-left: 4px; vertical-align: -2px; animation: blink 1s steps(1) infinite; }
+      @keyframes blink { 50% { opacity: 0; } }
+      .hero p.lead {
+        font-size: clamp(17px, 2vw, 20px); color: var(--label2);
+        max-width: 560px; margin: 20px 0 32px;
+      }
+
+      /* Floating parallax panels behind hero */
+      .orbits { position: absolute; inset: 0; z-index: -1; pointer-events: none; }
+      .panel {
+        position: absolute; border-radius: 22px; background: var(--card);
+        border: 1px solid var(--sep); box-shadow: 0 30px 60px -30px rgba(0,0,0,0.18);
+      }
+      .p1 { width: 210px; height: 150px; right: 4%; top: 60px; transform: rotate(6deg); }
+      .p2 { width: 150px; height: 200px; right: 20%; top: 220px; transform: rotate(-8deg); background: var(--ink); }
+      .p3 { width: 120px; height: 120px; right: 2%; top: 280px; transform: rotate(-4deg); }
+      @media (max-width: 900px) { .orbits { opacity: 0.35; } }
+
+      /* ---------- Waitlist ---------- */
+      .waitlist { display: flex; gap: 10px; max-width: 480px; flex-wrap: wrap; }
+      .waitlist input {
+        flex: 1; min-width: 220px; font-family: inherit; font-size: 16px;
+        padding: 14px 16px; border-radius: 12px; border: 1px solid var(--sep);
+        background: var(--card); color: var(--ink); outline: none;
+        transition: border-color 0.18s ease;
+      }
+      .waitlist input:focus { border-color: var(--ink); }
+      .form-note { margin-top: 12px; font-size: 13px; color: var(--label3); }
+      .form-ok {
+        display: none; align-items: center; gap: 10px; margin-top: 16px;
+        font-weight: 600; color: var(--ink);
+      }
+      .form-ok .tick { width: 26px; height: 26px; border-radius: 999px; background: var(--ink); color: #fff; display: grid; place-items: center; }
+      .form-ok .tick svg { width: 15px; height: 15px; }
+
+      /* ---------- Sections ---------- */
+      section { padding: 72px 0; }
+      .kicker { font-size: 13px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--label3); }
+      .h2 { font-size: clamp(28px, 4vw, 42px); font-weight: 700; margin: 12px 0 0; }
+      .sub { color: var(--label2); font-size: 17px; max-width: 560px; margin-top: 14px; }
+
+      .grid { display: grid; gap: 18px; margin-top: 40px; }
+      .g3 { grid-template-columns: repeat(3, 1fr); }
+      .g2 { grid-template-columns: repeat(2, 1fr); }
+      @media (max-width: 820px) { .g3, .g2 { grid-template-columns: 1fr; } }
+
+      .card {
+        background: var(--card); border: 1px solid var(--sep); border-radius: 20px;
+        padding: 26px; transition: transform 0.25s ease, box-shadow 0.25s ease;
+      }
+      .card:hover { transform: translateY(-4px); box-shadow: 0 26px 50px -28px rgba(0,0,0,0.22); }
+      .card .ic { width: 42px; height: 42px; border-radius: 12px; background: var(--fill); display: grid; place-items: center; margin-bottom: 16px; }
+      .card .ic svg { width: 20px; height: 20px; }
+      .card h3 { font-family: "Plus Jakarta Sans"; font-weight: 700; font-size: 18px; letter-spacing: 0; }
+      .card p { color: var(--label2); font-size: 15px; margin: 8px 0 0; }
+      .step-num { font-family: "Outfit"; font-weight: 800; font-size: 15px; color: var(--label3); }
+
+      .split { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+      @media (max-width: 820px) { .split { grid-template-columns: 1fr; } }
+      .panelBig { border-radius: 24px; padding: 34px; border: 1px solid var(--sep); }
+      .panelBig.dark { background: var(--ink); color: #fff; border-color: var(--ink); }
+      .panelBig.dark .sub2 { color: rgba(255,255,255,0.7); }
+      .sub2 { color: var(--label2); font-size: 15px; margin-top: 10px; }
+      .tag { display: inline-block; font-size: 12px; font-weight: 700; padding: 5px 10px; border-radius: 999px; background: var(--fill); color: var(--ink); }
+      .panelBig.dark .tag { background: rgba(255,255,255,0.14); color: #fff; }
+
+      /* ---------- CTA band ---------- */
+      .cta {
+        background: var(--ink); color: #fff; border-radius: 28px;
+        padding: 56px 40px; text-align: center; margin: 0 0 72px;
+      }
+      .cta h2 { font-size: clamp(28px, 4vw, 44px); }
+      .cta p { color: rgba(255,255,255,0.7); margin: 14px auto 28px; max-width: 480px; }
+      .cta .btn { background: #fff; color: var(--ink); }
+      .cta .waitlist input { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.2); color: #fff; }
+      .cta .waitlist input::placeholder { color: rgba(255,255,255,0.5); }
+      .cta .waitlist { justify-content: center; }
+
+      footer { border-top: 1px solid var(--sep); padding: 34px 0; color: var(--label2); font-size: 14px; }
+      .foot { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+
+      /* ---------- Reveal on scroll ---------- */
+      .reveal { opacity: 0; transform: translateY(22px); transition: opacity 0.7s cubic-bezier(0.22,1,0.36,1), transform 0.7s cubic-bezier(0.22,1,0.36,1); }
+      .reveal.in { opacity: 1; transform: none; }
+      @media (prefers-reduced-motion: reduce) { .reveal { opacity: 1; transform: none; } }
+    </style>
+  </head>
+  <body>
+    <!-- Nav -->
+    <div class="nav">
+      <div class="wrap row">
+        <div class="brand">
+          <span class="mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>
+          </span>
+          Nesty
+        </div>
+        <div class="spacer"></div>
+        <nav class="links">
+          <a href="#how">How it works</a>
+          <a href="#who">Who it's for</a>
+          <a href="#features">Features</a>
+        </nav>
+        <a href="#waitlist" class="btn">Join the waitlist</a>
+      </div>
+    </div>
+
+    <!-- Hero -->
+    <header class="hero">
+      <div class="orbits" id="orbits">
+        <div class="panel p1" data-depth="0.20"></div>
+        <div class="panel p2" data-depth="0.35"></div>
+        <div class="panel p3" data-depth="0.12"></div>
+      </div>
+      <div class="wrap">
+        <span class="eyebrow">● Tunisia&rsquo;s PropTech, in private beta</span>
+        <h1><span id="type"></span><span class="caret" id="caret"></span></h1>
+        <p class="lead">
+          Nesty is a calmer way to rent. Walk every home in 3D, then book a
+          visit or reserve your summer dates &mdash; no blurry photos, no wasted
+          Saturdays.
+        </p>
+        <form class="waitlist" id="waitlist-hero" novalidate>
+          <input type="email" name="email" placeholder="you@email.com" aria-label="Email address" required />
+          <button class="btn" type="submit">Get early access</button>
+        </form>
+        <div class="form-ok" id="ok-hero">
+          <span class="tick"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
+          You&rsquo;re on the list. We&rsquo;ll be in touch soon.
+        </div>
+        <p class="form-note">Join <strong id="count">312</strong> early movers. No spam, ever.</p>
+      </div>
+    </header>
+
+    <!-- How it works -->
+    <section id="how">
+      <div class="wrap">
+        <div class="reveal">
+          <span class="kicker">How it works</span>
+          <h2 class="h2">Three steps to a home you trust.</h2>
+          <p class="sub">The whole point of Nesty: only visit the place you already believe in.</p>
+        </div>
+        <div class="grid g3">
+          <div class="card reveal">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-2"/><path d="m7 12 4 4 6-8"/></svg></div>
+            <span class="step-num">01</span>
+            <h3>Tour in 3D</h3>
+            <p>Walk through every room from your couch, day or night. What you see is what you get.</p>
+          </div>
+          <div class="card reveal">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="m9 16 2 2 4-4"/></svg></div>
+            <span class="step-num">02</span>
+            <h3>Book a visit or reserve</h3>
+            <p>Pick a viewing slot, or hold your summer dates with a check-in and check-out.</p>
+          </div>
+          <div class="card reveal">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 4 6v6c0 5 3.5 8 8 10 4.5-2 8-5 8-10V6l-8-4Z"/><path d="m9 12 2 2 4-4"/></svg></div>
+            <span class="step-num">03</span>
+            <h3>Move in with confidence</h3>
+            <p>Every listing is verified and tracked, so there are no surprises when you arrive.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Who it's for -->
+    <section id="who">
+      <div class="wrap">
+        <div class="reveal">
+          <span class="kicker">Who it&rsquo;s for</span>
+          <h2 class="h2">Two sides, one calm marketplace.</h2>
+        </div>
+        <div class="split" style="margin-top: 36px">
+          <div class="panelBig reveal">
+            <span class="tag">For seekers</span>
+            <h3 class="display" style="font-size: 26px; margin-top: 16px">Find a home without the guesswork</h3>
+            <p class="sub2">Students and young professionals who want to tour, compare and shortlist homes &mdash; then book a visit or reserve their dates in a couple of taps.</p>
+          </div>
+          <div class="panelBig dark reveal">
+            <span class="tag">For agencies</span>
+            <h3 class="display" style="font-size: 26px; margin-top: 16px; color:#fff">See your whole portfolio at a glance</h3>
+            <p class="sub2">List properties, and track visits, reservations and requests on a live calendar &mdash; know instantly what&rsquo;s reserved and what&rsquo;s free.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Features -->
+    <section id="features">
+      <div class="wrap">
+        <div class="reveal">
+          <span class="kicker">What&rsquo;s inside</span>
+          <h2 class="h2">Built to feel effortless.</h2>
+        </div>
+        <div class="grid g3">
+          <div class="card reveal"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/></svg></div><h3>Immersive 3D tours</h3><p>Every room, navigable in 360&deg; &mdash; a real walkthrough, not a slideshow.</p></div>
+          <div class="card reveal"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></div><h3>Visits &amp; reservations</h3><p>A full booking flow with a live calendar for both sides.</p></div>
+          <div class="card reveal"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 12 2 2 4-4"/><path d="M12 3c-1.5 2-4 3-6 3 0 6 2.5 9 6 12 3.5-3 6-6 6-12-2 0-4.5-1-6-3Z"/></svg></div><h3>Trust &amp; verification</h3><p>Verified listings and owners &mdash; confidence before you commit.</p></div>
+          <div class="card reveal"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m7 14 3-3 3 3 5-6"/></svg></div><h3>Agency insights</h3><p>Views, saves and tour attention &mdash; see how people react to a place.</p></div>
+          <div class="card reveal"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg></div><h3>Neighbourhood intel</h3><p>Transport, schools and lifestyle scores around every home.</p></div>
+          <div class="card reveal"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M3 12h18"/></svg></div><h3>Summer rentals</h3><p>Hold your vacation dates with a clear check-in and check-out.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CTA / waitlist -->
+    <section id="waitlist" style="padding-top: 0">
+      <div class="wrap">
+        <div class="cta reveal">
+          <h2>Be first through the door.</h2>
+          <p>We&rsquo;re opening Nesty to a small group of seekers and agencies. Leave your email and we&rsquo;ll bring you in.</p>
+          <form class="waitlist" id="waitlist-cta" novalidate>
+            <input type="email" name="email" placeholder="you@email.com" aria-label="Email address" required />
+            <button class="btn" type="submit">Join the waitlist</button>
+          </form>
+          <div class="form-ok" id="ok-cta" style="justify-content:center; color:#fff">
+            <span class="tick" style="background:#fff; color:var(--ink)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
+            You&rsquo;re on the list. Talk soon.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      <div class="wrap foot">
+        <div class="brand" style="font-size: 17px">
+          <span class="mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg></span>
+          Nesty
+        </div>
+        <span class="spacer" style="flex:1"></span>
+        <span>&copy; <span id="year"></span> Nesty &middot; Made in Tunisia</span>
+      </div>
+    </footer>
+
+    <script>
+      // ---- Typing headline (cozy typewriter) ----
+      (function () {
+        const el = document.getElementById("type");
+        const caret = document.getElementById("caret");
+        const text = "Tour before you visit.";
+        let i = 0;
+        function tick() {
+          if (i <= text.length) {
+            el.textContent = text.slice(0, i);
+            const ch = text[i - 1];
+            i++;
+            setTimeout(tick, ch === "." ? 320 : 55);
+          } else {
+            // gentle caret keeps blinking (CSS), nothing else to do
+          }
+        }
+        setTimeout(tick, 350);
+      })();
+
+      // ---- Scroll reveals ----
+      (function () {
+        const io = new IntersectionObserver(
+          (entries) => {
+            entries.forEach((e) => {
+              if (e.isIntersecting) {
+                e.target.classList.add("in");
+                io.unobserve(e.target);
+              }
+            });
+          },
+          { threshold: 0.14 }
+        );
+        document.querySelectorAll(".reveal").forEach((n, idx) => {
+          n.style.transitionDelay = (idx % 3) * 70 + "ms";
+          io.observe(n);
+        });
+      })();
+
+      // ---- Parallax hero panels ----
+      (function () {
+        const panels = document.querySelectorAll("#orbits .panel");
+        let tx = 0, ty = 0, cx = 0, cy = 0;
+        window.addEventListener("mousemove", (e) => {
+          tx = (e.clientX / window.innerWidth - 0.5) * 2;
+          ty = (e.clientY / window.innerHeight - 0.5) * 2;
+        });
+        function raf() {
+          cx += (tx - cx) * 0.06;
+          cy += (ty - cy) * 0.06;
+          panels.forEach((p) => {
+            const d = parseFloat(p.dataset.depth || "0.2");
+            const base = p.classList.contains("p1") ? 6 : p.classList.contains("p2") ? -8 : -4;
+            p.style.transform = `translate(${cx * d * -40}px, ${cy * d * -40}px) rotate(${base}deg)`;
+          });
+          requestAnimationFrame(raf);
+        }
+        raf();
+      })();
+
+      // ---- Waitlist ----
+      // Demo capture: stored locally + logged. To go live, POST to your backend
+      // (e.g. a Next.js /api/waitlist route, Supabase table, or Formspree).
+      function handleWaitlist(formId, okId) {
+        const form = document.getElementById(formId);
+        const ok = document.getElementById(okId);
+        if (!form) return;
+        form.addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const email = form.email.value.trim();
+          const valid = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email);
+          if (!valid) {
+            form.email.focus();
+            form.email.style.borderColor = "#b23a34";
+            return;
+          }
+          // Persist locally for the demo.
+          const list = JSON.parse(localStorage.getItem("nesty.waitlist") || "[]");
+          if (!list.includes(email)) list.push(email);
+          localStorage.setItem("nesty.waitlist", JSON.stringify(list));
+
+          // TODO(backend): replace the block above with:
+          // await fetch("/api/waitlist", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email }) });
+
+          form.style.display = "none";
+          ok.style.display = "flex";
+          const count = document.getElementById("count");
+          if (count) count.textContent = 312 + list.length;
+        });
+      }
+      handleWaitlist("waitlist-hero", "ok-hero");
+      handleWaitlist("waitlist-cta", "ok-cta");
+
+      document.getElementById("year").textContent = new Date().getFullYear();
+    </script>
+  </body>
+</html>
