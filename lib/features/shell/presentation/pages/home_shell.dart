@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../app/di/injection.dart';
 import '../../../../core/branding/app_icons.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../assistant/presentation/widgets/assistant_launcher.dart';
 import '../../../auth/domain/entities/user_role.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
 import '../../../listings/data/datasources/host_listings_store.dart';
@@ -16,10 +17,13 @@ import '../../../listings/presentation/pages/my_listings_page.dart';
 import '../../../../core/widgets/ios/liquid_glass.dart';
 import '../../../notifications/data/notifications_store.dart';
 import '../../../profile/presentation/pages/profile_page.dart';
+import '../../../partner/presentation/pages/partner_home_page.dart';
 import '../../../reservations/data/reservations_store.dart';
 import '../../../reservations/presentation/pages/host_calendar_page.dart';
 import '../../../reservations/presentation/pages/my_trips_page.dart';
 import '../../../saved/presentation/pages/saved_page.dart';
+import '../../../subscription/data/subscription_store.dart';
+import '../../../subscription/presentation/partner_gate.dart';
 
 /// Root shell with a floating "Liquid Glass" tab bar that hovers above the
 /// content. The selected tab expands into a solid brand lozenge. The tab set is
@@ -42,6 +46,20 @@ class _HomeShellState extends State<HomeShell> {
     sl<ReservationsStore>().load();
     // Load & live-subscribe to the notification center.
     sl<NotificationsStore>().load();
+    // Load the Partner subscription, then enforce the rule that a Partner must
+    // hold an active plan — otherwise they revert to a simple seeker.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _syncPartnerAccess());
+  }
+
+  Future<void> _syncPartnerAccess() async {
+    await sl<SubscriptionStore>().load();
+    if (!mounted) return;
+    final auth = context.read<AuthCubit>();
+    if (auth.state.user?.role == UserRole.partner &&
+        !sl<SubscriptionStore>().isActivePartner) {
+      // Subscription cancelled or lapsed — the only ways back to a seeker.
+      await auth.switchRole(UserRole.seeker);
+    }
   }
 
   void _select(int i) {
@@ -56,8 +74,10 @@ class _HomeShellState extends State<HomeShell> {
       (c) => c.state.user?.role ?? UserRole.seeker,
     );
     final isHost = role == UserRole.host;
+    final isPartner = role == UserRole.partner;
 
-    // Role-specific tab sets. Seekers browse; hosts manage.
+    // Role-specific tab sets. Seekers browse; agencies get a full dashboard;
+    // partners get a lighter overview but the same publish/manage powers.
     final List<Widget> pages;
     final List<_TabItem> tabs;
     if (isHost) {
@@ -71,6 +91,19 @@ class _HomeShellState extends State<HomeShell> {
         _TabItem(AppIcons.dashboard, AppIcons.dashboard, 'Dashboard'),
         _TabItem(AppIcons.calendar, AppIcons.calendar, 'Calendar'),
         _TabItem(AppIcons.listings, AppIcons.listings, 'Listings'),
+        _TabItem(AppIcons.profile, AppIcons.profile, 'Profile'),
+      ];
+    } else if (isPartner) {
+      pages = const [
+        PartnerHomePage(),
+        MyListingsPage(),
+        HostCalendarPage(),
+        ProfilePage(),
+      ];
+      tabs = const [
+        _TabItem(AppIcons.partner, AppIcons.partner, 'Space'),
+        _TabItem(AppIcons.listings, AppIcons.listings, 'Listings'),
+        _TabItem(AppIcons.calendar, AppIcons.calendar, 'Calendar'),
         _TabItem(AppIcons.profile, AppIcons.profile, 'Profile'),
       ];
     } else {
@@ -93,6 +126,26 @@ class _HomeShellState extends State<HomeShell> {
           children: [
             IndexedStack(index: _index, children: pages),
             Positioned(
+              right: 16,
+              bottom: bottomInset + 84,
+              child: AssistantLauncher(
+                contextNote:
+                    'The user is browsing the Nestly app, currently on the '
+                    '"${tabs[_index].label}" tab as a ${role.name}.',
+                suggestions: isHost || isPartner
+                    ? const [
+                        'Help me write a great listing description',
+                        'How should I price my place?',
+                        'Tips to get more bookings',
+                      ]
+                    : const [
+                        'Find a place that fits my budget',
+                        'Which area in Tunisia suits me best?',
+                        'What should I check before I rent?',
+                      ],
+              ),
+            ),
+            Positioned(
               left: 0,
               right: 0,
               bottom: bottomInset + 10,
@@ -109,6 +162,11 @@ class _HomeShellState extends State<HomeShell> {
                       const SizedBox(width: 10),
                       _HostAction(onTap: () => _addPlace(innerContext)),
                     ],
+                    if (isPartner) ...[
+                      const SizedBox(width: 10),
+                      _HostAction(onTap: () => _addPlace(innerContext,
+                          enforceLimit: true)),
+                    ],
                   ],
                 ),
               ),
@@ -119,8 +177,14 @@ class _HomeShellState extends State<HomeShell> {
     );
   }
 
-  Future<void> _addPlace(BuildContext innerContext) async {
+  Future<void> _addPlace(
+    BuildContext innerContext, {
+    bool enforceLimit = false,
+  }) async {
     HapticFeedback.mediumImpact();
+    // Partners are capped by their subscription tier — check before publishing.
+    if (enforceLimit && !await ensureWithinListingLimit(innerContext)) return;
+    if (!innerContext.mounted) return;
     final listingsCubit = innerContext.read<ListingsCubit>();
     final published = await Navigator.of(innerContext).push<bool>(
       MaterialPageRoute(builder: (_) => const CreateListingPage()),

@@ -2,6 +2,8 @@
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Voice-to-text for the AI assistant. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO"/>
     <application
         android:label="Nesty"
         android:name="${applicationName}"
@@ -50,6 +52,15 @@
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
+        </intent>
+        <!-- url_launcher: open Google Maps / Street View for the neighbourhood. -->
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="https"/>
+        </intent>
+        <!-- speech_to_text: resolve the on-device speech recogniser. -->
+        <intent>
+            <action android:name="android.speech.RecognitionService"/>
         </intent>
     </queries>
 </manifest>

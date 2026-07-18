@@ -183,7 +183,9 @@ class _ListingRow extends StatelessWidget {
                           vertical: 3,
                         ),
                         decoration: BoxDecoration(
-                          color: reserved ? AppColors.ink : AppColors.accentSoft,
+                          color: reserved
+                              ? AppColors.ink
+                              : AppColors.accentSoft,
                           borderRadius: BorderRadius.circular(AppRadius.pill),
                         ),
                         child: Text(
@@ -258,8 +260,8 @@ class _EmptyListings extends StatelessWidget {
             FadeSlideIn(
               delay: const Duration(milliseconds: 160),
               child: Text(
-                'Add a cover, the basics and a few rooms — we turn them into a '
-                '3D walkthrough seekers can explore. Tap the + to start.',
+                'Add a cover, the basics and a short description — and your '
+                'place goes live for seekers. Tap the + to start.',
                 textAlign: TextAlign.center,
                 style: theme.textTheme.bodyMedium,
               ),

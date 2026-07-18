@@ -32,8 +32,6 @@ class TrustInfo {
     required this.identityVerified,
     required this.ownershipVerified,
     required this.locationVerified,
-    required this.videoVerified,
-    required this.tourComplete,
     required this.wellReviewed,
   });
 
@@ -44,8 +42,6 @@ class TrustInfo {
   final bool identityVerified;
   final bool ownershipVerified;
   final bool locationVerified;
-  final bool videoVerified;
-  final bool tourComplete;
   final bool wellReviewed;
 
   bool get isVerified => level != TrustLevel.basic;
@@ -54,21 +50,16 @@ class TrustInfo {
     final identityVerified = p.isSuperhost;
     final ownershipVerified = p.isSuperhost || p.reviewCount >= 50;
     final locationVerified = p.address.trim().isNotEmpty;
-    final videoVerified = p.tour3dUrl != null;
-    final tourComplete =
-        p.has3dTour &&
-        p.rooms.where((r) => r.canReconstruct || r.hasPanorama).length >= 2;
     final wellReviewed = p.reviewCount >= 30 && p.rating >= 4.5;
 
     var score = 0;
-    if (identityVerified) score += 22;
-    if (ownershipVerified) score += 20;
-    if (locationVerified) score += 10;
-    if (videoVerified) score += 16;
-    if (tourComplete) score += 18;
-    if (wellReviewed) score += 14;
-    if (p.gallery.length >= 3) score += 5;
-    if (p.amenities.length >= 4) score += 5;
+    if (identityVerified) score += 24;
+    if (ownershipVerified) score += 22;
+    if (locationVerified) score += 16;
+    if (wellReviewed) score += 22;
+    if (p.gallery.length >= 3) score += 10;
+    if (p.gallery.length >= 6) score += 8;
+    if (p.amenities.length >= 4) score += 10;
     score = score.clamp(0, 100);
 
     final level = score >= 80
@@ -83,8 +74,6 @@ class TrustInfo {
       identityVerified: identityVerified,
       ownershipVerified: ownershipVerified,
       locationVerified: locationVerified,
-      videoVerified: videoVerified,
-      tourComplete: tourComplete,
       wellReviewed: wellReviewed,
     );
   }

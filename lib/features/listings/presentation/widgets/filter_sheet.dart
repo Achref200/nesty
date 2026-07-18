@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../../core/branding/app_icons.dart';
+import '../../../../core/config/ai_config.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
+import '../../../assistant/presentation/widgets/assistant_sheet.dart';
 import '../../domain/entities/property.dart';
 import '../cubit/listing_filter.dart';
 
@@ -62,8 +64,9 @@ class _FilterSheet extends StatefulWidget {
 }
 
 class _FilterSheetState extends State<_FilterSheet> {
-  late final TextEditingController _search =
-      TextEditingController(text: widget.initial.city ?? '');
+  late final TextEditingController _search = TextEditingController(
+    text: widget.initial.city ?? '',
+  );
   late RentalTerm? _term = widget.initial.rentalTerm;
   late final Set<String> _aud = {...widget.initial.audience};
   late int _guests = widget.initial.guests ?? 1;
@@ -103,12 +106,39 @@ class _FilterSheetState extends State<_FilterSheet> {
     );
   }
 
+  void _askAi() {
+    HapticFeedback.selectionClick();
+    final city = _search.text.trim();
+    final note = [
+      'The user is setting search filters on Nestly to find a rental in Tunisia.',
+      city.isEmpty ? 'Destination: anywhere' : 'Destination: $city',
+      if (_term != null) 'Rental term: ${_term!.label}',
+      'Guests: $_guests',
+      _price >= _maxPrice
+          ? 'Budget: no cap set yet'
+          : 'Budget: up to ${_price.toStringAsFixed(0)} TND/month',
+      if (_aud.isNotEmpty) 'Should suit: ${_aud.join(', ')}',
+      if (widget.destinations.isNotEmpty)
+        'Cities available in the feed: ${widget.destinations.join(', ')}',
+      'Help them choose the best-fit filters for their budget and needs.',
+    ].join('\n');
+    showAssistant(
+      context,
+      subtitle: 'Best fit for your budget',
+      contextNote: note,
+      suggestions: const [
+        'What can I get for my budget?',
+        'Which city gives the best value?',
+        'Long-term or short-term for me?',
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Column(
       children: [
-        const _Grabber(),
         Padding(
           padding: const EdgeInsets.fromLTRB(
             AppSpacing.gutter,
@@ -120,6 +150,39 @@ class _FilterSheetState extends State<_FilterSheet> {
             children: [
               Text('Filters', style: theme.textTheme.titleLarge),
               const Spacer(),
+              if (AiConfig.enabled)
+                GestureDetector(
+                  onTap: _askAi,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 7,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.ink,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          AppIcons.assistant,
+                          size: 15,
+                          color: AppColors.onAccent,
+                        ),
+                        SizedBox(width: 6),
+                        Text(
+                          'Ask AI',
+                          style: TextStyle(
+                            color: AppColors.onAccent,
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               IconButton(
                 icon: const Icon(Icons.close_rounded),
                 onPressed: () => Navigator.of(context).pop(),
@@ -149,8 +212,11 @@ class _FilterSheetState extends State<_FilterSheet> {
                 padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
                 child: Row(
                   children: [
-                    const Icon(AppIcons.explore,
-                        size: 20, color: AppColors.secondaryLabel),
+                    const Icon(
+                      AppIcons.explore,
+                      size: 20,
+                      color: AppColors.secondaryLabel,
+                    ),
                     const SizedBox(width: AppSpacing.sm),
                     Expanded(
                       child: TextField(
@@ -167,8 +233,11 @@ class _FilterSheetState extends State<_FilterSheet> {
                     if (_search.text.isNotEmpty)
                       GestureDetector(
                         onTap: () => setState(() => _search.clear()),
-                        child: const Icon(Icons.close_rounded,
-                            size: 18, color: AppColors.secondaryLabel),
+                        child: const Icon(
+                          Icons.close_rounded,
+                          size: 18,
+                          color: AppColors.secondaryLabel,
+                        ),
                       ),
                   ],
                 ),
@@ -188,7 +257,8 @@ class _FilterSheetState extends State<_FilterSheet> {
                     _Chip(
                       label: city,
                       selected:
-                          _search.text.trim().toLowerCase() == city.toLowerCase(),
+                          _search.text.trim().toLowerCase() ==
+                          city.toLowerCase(),
                       onTap: () => setState(() {
                         if (_search.text.trim().toLowerCase() ==
                             city.toLowerCase()) {
@@ -310,23 +380,6 @@ class _FilterSheetState extends State<_FilterSheet> {
   }
 }
 
-class _Grabber extends StatelessWidget {
-  const _Grabber();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 40,
-      height: 4,
-      margin: const EdgeInsets.only(top: 10, bottom: 10),
-      decoration: BoxDecoration(
-        color: AppColors.separator,
-        borderRadius: BorderRadius.circular(2),
-      ),
-    );
-  }
-}
-
 class _Label extends StatelessWidget {
   const _Label(this.text);
   final String text;
@@ -378,9 +431,11 @@ class _Chip extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             if (icon != null) ...[
-              Icon(icon,
-                  size: 16,
-                  color: selected ? AppColors.onAccent : AppColors.ink),
+              Icon(
+                icon,
+                size: 16,
+                color: selected ? AppColors.onAccent : AppColors.ink,
+              ),
               const SizedBox(width: 6),
             ],
             Text(
@@ -524,7 +579,11 @@ class _Footer extends StatelessWidget {
               child: const Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.search_rounded, size: 20, color: AppColors.onAccent),
+                  Icon(
+                    Icons.search_rounded,
+                    size: 20,
+                    color: AppColors.onAccent,
+                  ),
                   SizedBox(width: 8),
                   Text(
                     'Show homes',

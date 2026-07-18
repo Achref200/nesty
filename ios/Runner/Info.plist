@@ -10,6 +10,10 @@
 	<string>Nesty needs access to your photos so you can add them to your listings and 3D tours.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Nesty uses your camera so you can capture photos for your listings.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Nesty uses the microphone so you can talk to the assistant instead of typing.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Nesty uses speech recognition to turn what you say into text for the assistant.</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>

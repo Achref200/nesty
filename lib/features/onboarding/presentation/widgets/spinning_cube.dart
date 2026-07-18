@@ -8,6 +8,10 @@ import '../../../../core/theme/app_colors.dart';
 /// gently side-to-side (rather than a full spin) so faces never flip through
 /// each other — giving a clean, premium "this is a 3D-first app" impression.
 ///
+/// When [interactive] is true the user can drag to spin it themselves — the
+/// core promise of the product (turn any home in 3D) made tangible in the very
+/// first seconds. Their drag adds a persistent offset over the gentle idle sway.
+///
 /// Fully monochrome: near-black faces, faux directional lighting via black/white
 /// overlays, and hairline white edges.
 class SpinningCube extends StatefulWidget {
@@ -15,10 +19,14 @@ class SpinningCube extends StatefulWidget {
     super.key,
     this.size = 120,
     this.icon = Icons.view_in_ar_rounded,
+    this.interactive = false,
   });
 
   final double size;
   final IconData icon;
+
+  /// Lets the user drag to rotate the cube.
+  final bool interactive;
 
   @override
   State<SpinningCube> createState() => _SpinningCubeState();
@@ -31,20 +39,35 @@ class _SpinningCubeState extends State<SpinningCube>
     duration: const Duration(seconds: 7),
   )..repeat();
 
+  // Persistent rotation the user has added by dragging.
+  double _offsetYaw = 0;
+  double _offsetPitch = 0;
+
   @override
   void dispose() {
     _c.dispose();
     super.dispose();
   }
 
+  void _onDrag(DragUpdateDetails d) {
+    setState(() {
+      _offsetYaw += d.delta.dx * 0.012;
+      _offsetPitch = (_offsetPitch - d.delta.dy * 0.012).clamp(-1.1, 0.7);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
+    final cube = AnimatedBuilder(
       animation: _c,
       builder: (context, _) {
         final t = _c.value * 2 * math.pi;
-        final ay = math.sin(t) * 0.7; // yaw, ±40°
-        final ax = -0.32 + math.cos(t) * 0.12; // slight downward pitch
+        // The idle sway is calmer when the cube is interactive, so the user's
+        // own turning reads as the main motion.
+        final swayScale = widget.interactive ? 0.45 : 1.0;
+        final ay = math.sin(t) * 0.7 * swayScale + _offsetYaw; // yaw
+        final ax =
+            -0.32 + math.cos(t) * 0.12 * swayScale + _offsetPitch; // pitch
         return Transform(
           alignment: Alignment.center,
           transform: Matrix4.identity()
@@ -54,6 +77,14 @@ class _SpinningCubeState extends State<SpinningCube>
           child: _cube(),
         );
       },
+    );
+
+    if (!widget.interactive) return cube;
+
+    return GestureDetector(
+      onPanUpdate: _onDrag,
+      behavior: HitTestBehavior.opaque,
+      child: cube,
     );
   }
 

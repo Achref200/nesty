@@ -1,5 +1,4 @@
 import '../../domain/entities/property.dart';
-import '../../domain/entities/property_room.dart';
 
 /// Data-layer model for [Property] with Supabase (de)serialization.
 class PropertyModel extends Property {
@@ -16,7 +15,6 @@ class PropertyModel extends Property {
     required super.areaSqm,
     required super.coverImage,
     required super.gallery,
-    required super.rooms,
     required super.rating,
     required super.reviewCount,
     required super.hostName,
@@ -27,7 +25,6 @@ class PropertyModel extends Property {
     super.tags,
     super.latitude,
     super.longitude,
-    super.tour3dUrl,
     super.isFavorite,
     super.isSuperhost,
     super.availableFrom,
@@ -49,7 +46,6 @@ class PropertyModel extends Property {
       areaSqm: (map['area_sqm'] as num?)?.toDouble() ?? 0,
       coverImage: map['cover_image'] as String? ?? '',
       gallery: _stringList(map['gallery']),
-      rooms: _roomsFrom(map['rooms']),
       rating: (map['rating'] as num?)?.toDouble() ?? 0,
       reviewCount: (map['review_count'] as num?)?.toInt() ?? 0,
       hostName: map['host_name'] as String? ?? '',
@@ -60,7 +56,6 @@ class PropertyModel extends Property {
       tags: _stringList(map['tags']),
       latitude: (map['latitude'] as num?)?.toDouble(),
       longitude: (map['longitude'] as num?)?.toDouble(),
-      tour3dUrl: map['tour_3d_url'] as String?,
       isSuperhost: (map['is_superhost'] as bool?) ?? false,
       availableFrom: map['available_from'] as String?,
       billsIncluded: (map['bills_included'] as bool?) ?? false,
@@ -82,15 +77,6 @@ class PropertyModel extends Property {
     ListingType.entirePlace => 'entire_place',
   };
 
-  static String _roomTypeToString(RoomType type) => switch (type) {
-    RoomType.livingRoom => 'living_room',
-    RoomType.kitchen => 'kitchen',
-    RoomType.bathroom => 'bathroom',
-    RoomType.diningRoom => 'dining_room',
-    RoomType.bedroom => 'bedroom',
-    RoomType.other => 'other',
-  };
-
   /// Serializes to the same snake_case shape [fromMap] reads, so local
   /// persistence round-trips cleanly.
   Map<String, dynamic> toMap() => {
@@ -106,17 +92,6 @@ class PropertyModel extends Property {
     'area_sqm': areaSqm,
     'cover_image': coverImage,
     'gallery': gallery,
-    'rooms': rooms
-        .map(
-          (r) => {
-            'id': r.id,
-            'name': r.name,
-            'type': _roomTypeToString(r.type),
-            'images': r.images,
-            'panorama_url': r.panoramaUrl,
-          },
-        )
-        .toList(),
     'rating': rating,
     'review_count': reviewCount,
     'host_name': hostName,
@@ -127,7 +102,6 @@ class PropertyModel extends Property {
     'tags': tags,
     'latitude': latitude,
     'longitude': longitude,
-    'tour_3d_url': tour3dUrl,
     'is_superhost': isSuperhost,
     'available_from': availableFrom,
     'bills_included': billsIncluded,
@@ -137,30 +111,5 @@ class PropertyModel extends Property {
   static List<String> _stringList(dynamic value) {
     if (value is List) return value.map((e) => e.toString()).toList();
     return const [];
-  }
-
-  static List<PropertyRoom> _roomsFrom(dynamic value) {
-    if (value is! List) return const [];
-    return value.map((e) {
-      final map = e as Map<String, dynamic>;
-      return PropertyRoom(
-        id: map['id'].toString(),
-        name: map['name'] as String? ?? '',
-        type: _roomTypeFromString(map['type'] as String?),
-        images: _stringList(map['images']),
-        panoramaUrl: map['panorama_url'] as String?,
-      );
-    }).toList();
-  }
-
-  static RoomType _roomTypeFromString(String? value) {
-    return switch (value) {
-      'living_room' => RoomType.livingRoom,
-      'kitchen' => RoomType.kitchen,
-      'bathroom' => RoomType.bathroom,
-      'dining_room' => RoomType.diningRoom,
-      'bedroom' => RoomType.bedroom,
-      _ => RoomType.other,
-    };
   }
 }

@@ -6,11 +6,13 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../app/router/app_routes.dart';
 import '../../../../core/branding/app_icons.dart';
 import '../../../../core/services/app_feedback.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/widgets/motion/fade_slide_in.dart';
+import '../../../../core/widgets/motion/three_dot_loader.dart';
 import '../../../../core/widgets/motion/typing_text.dart';
 import '../../../../core/widgets/neu/neu_button.dart';
 import '../../../../core/widgets/neu/neu_field.dart';
@@ -104,7 +106,7 @@ class _AuthPageState extends State<AuthPage> {
     return s;
   }
 
-  void _submit() {
+  Future<void> _submit() async {
     FocusScope.of(context).unfocus();
     final error = _validate();
     if (error != null) {
@@ -122,8 +124,53 @@ class _AuthPageState extends State<AuthPage> {
         widget.role ?? UserRole.seeker,
       );
     } else {
-      cubit.signIn(_email.text, _password.text);
+      // Role-scoped sign-in: an account can only enter its own space.
+      final attempt = await cubit.signInScoped(
+        _email.text,
+        _password.text,
+        expectedRole: widget.role,
+      );
+      if (!mounted) return;
+      if (attempt.roleMismatch) {
+        _showRoleMismatch(attempt.actualRole);
+      } else if (attempt.error != null) {
+        setState(() => _error = attempt.error);
+      }
     }
+  }
+
+  /// Alerts the user that they knocked on the wrong door, and offers to jump
+  /// to the space their account actually belongs to.
+  void _showRoleMismatch(UserRole? actual) {
+    HapticFeedback.heavyImpact();
+    final entered = widget.role;
+    final actualLabel = (actual ?? UserRole.seeker).shortLabel;
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        icon: const Icon(AppIcons.shield, color: AppColors.ink),
+        title: Text('This is the ${entered?.shortLabel ?? 'sign in'} space'),
+        content: Text(
+          'That account is a $actualLabel account, so it can\'t sign in here. '
+          'Head to the $actualLabel space to continue.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.of(dialogContext).pop();
+              if (actual != null) {
+                context.pushReplacement(AppRoutes.auth, extra: actual);
+              }
+            },
+            child: Text('Go to $actualLabel'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -132,10 +179,21 @@ class _AuthPageState extends State<AuthPage> {
     return Scaffold(
       body: SafeArea(
         child: BlocConsumer<AuthCubit, AuthState>(
+          listenWhen: (prev, curr) =>
+              prev.status != curr.status ||
+              prev.mismatchRole != curr.mismatchRole,
           listener: (context, state) {
-            if (state.errorMessage != null &&
+            if (state.mismatchRole != null) {
+              context.read<AuthCubit>().clearMismatch();
+              _showRoleMismatch(state.mismatchRole);
+              return;
+            }
+            if (state.status == AuthStatus.authenticated) {
+              AppFeedback.successToast(context, 'Login successful.');
+            } else if (state.errorMessage != null &&
                 state.status == AuthStatus.unauthenticated) {
               setState(() => _error = state.errorMessage);
+              AppFeedback.errorToast(context, state.errorMessage!);
             }
           },
           builder: (context, state) {
@@ -160,10 +218,11 @@ class _AuthPageState extends State<AuthPage> {
                         icon: _agencyOnly
                             ? AppIcons.agency
                             : _isCreate
-                                ? ((widget.role ?? UserRole.seeker) ==
-                                          UserRole.host
-                                      ? AppIcons.agency
-                                      : AppIcons.seeker)
+                                ? switch (widget.role ?? UserRole.seeker) {
+                                    UserRole.host => AppIcons.agency,
+                                    UserRole.partner => AppIcons.partner,
+                                    UserRole.seeker => AppIcons.seeker,
+                                  }
                                 : AppIcons.tour3d,
                       ),
                     ),
@@ -195,35 +254,7 @@ class _AuthPageState extends State<AuthPage> {
                   ),
                   const SizedBox(height: AppSpacing.xl),
                   if (!_agencyOnly) ...[
-                    FadeSlideIn(
-                      delay: const Duration(milliseconds: 140),
-                      child: SizedBox(
-                        width: double.infinity,
-                        child: SegmentedButton<int>(
-                          segments: const [
-                            ButtonSegment(value: 0, label: Text('Sign in')),
-                            ButtonSegment(value: 1, label: Text('Create')),
-                          ],
-                          selected: {_mode},
-                          showSelectedIcon: false,
-                          onSelectionChanged: (s) => _setMode(s.first),
-                          style: ButtonStyle(
-                            backgroundColor: WidgetStateProperty.resolveWith(
-                              (states) => states.contains(WidgetState.selected)
-                                  ? AppColors.accent
-                                  : AppColors.fill,
-                            ),
-                            foregroundColor: WidgetStateProperty.resolveWith(
-                              (states) => states.contains(WidgetState.selected)
-                                  ? AppColors.onAccent
-                                  : AppColors.label,
-                            ),
-                            side: WidgetStateProperty.all(BorderSide.none),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.xl),
+                    const SizedBox(height: AppSpacing.sm),
                   ],
                   AnimatedSize(
                     duration: const Duration(milliseconds: 220),
@@ -319,8 +350,38 @@ class _AuthPageState extends State<AuthPage> {
                       ),
                     ),
                   ],
-                  const SizedBox(height: AppSpacing.lg),
                   if (!_agencyOnly) ...[
+                    const SizedBox(height: AppSpacing.xs),
+                    Center(
+                      child: TextButton(
+                        onPressed: () => _setMode(_isCreate ? 0 : 1),
+                        child: RichText(
+                          text: TextSpan(
+                            style: const TextStyle(
+                              color: AppColors.secondaryLabel,
+                              fontSize: 14,
+                            ),
+                            children: [
+                              TextSpan(
+                                text: _isCreate
+                                    ? 'Already have an account?  '
+                                    : 'New to Nesty?  ',
+                              ),
+                              TextSpan(
+                                text: _isCreate ? 'Sign in' : 'Create account',
+                                style: const TextStyle(
+                                  color: AppColors.textPrimary,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                  if (!_agencyOnly) ...[
+                    const SizedBox(height: AppSpacing.lg),
                     Row(
                       children: const [
                         Expanded(child: Divider(color: AppColors.separator)),
@@ -336,16 +397,16 @@ class _AuthPageState extends State<AuthPage> {
                       ],
                     ),
                     const SizedBox(height: AppSpacing.lg),
-                    NeuButton(
-                      label: 'Continue with Google',
-                      filled: false,
-                      onPressed: () => _social(context, 'google'),
+                    _GoogleButton(
+                      loading: state.isSubmitting,
+                      onTap: () => _social(context, 'google'),
                     ),
                     if (!kIsWeb && Platform.isIOS) ...[
                       const SizedBox(height: AppSpacing.md),
                       NeuButton(
                         label: 'Continue with Apple',
                         filled: false,
+                        icon: Icons.apple,
                         onPressed: () => _social(context, 'apple'),
                       ),
                     ],
@@ -360,9 +421,27 @@ class _AuthPageState extends State<AuthPage> {
   }
 
   Future<void> _social(BuildContext context, String provider) async {
-    final error = await context.read<AuthCubit>().signInWithProvider(provider);
+    // Scope the OAuth sign-in to the space it was launched from, so an account
+    // can only enter its own role. The universal "Sign in" entry (no role)
+    // passes null and accepts any account.
+    final error = await context.read<AuthCubit>().signInWithProvider(
+          provider,
+          expectedRole: widget.role,
+        );
     if (error != null && context.mounted) {
-      AppFeedback.error(context, error);
+      final e = error.toLowerCase();
+      final notEnabled = e.contains('not enabled') ||
+          e.contains('unsupported provider') ||
+          e.contains('validation_failed') ||
+          e.contains('provider is not enabled');
+      final label = '${provider[0].toUpperCase()}${provider.substring(1)}';
+      AppFeedback.errorToast(
+        context,
+        notEnabled
+            ? '$label sign-in isn\'t enabled on the server yet. '
+                'Ask an admin to turn on the $label provider in Supabase.'
+            : error,
+      );
     }
   }
 
@@ -479,4 +558,109 @@ class _PasswordStrength extends StatelessWidget {
       ],
     );
   }
+}
+
+/// "Continue with Google" — an outlined button with the recognisable multi-tone
+/// "G" mark (the one splash of colour we allow, for trust/recognition).
+class _GoogleButton extends StatelessWidget {
+  const _GoogleButton({required this.onTap, this.loading = false});
+  final VoidCallback onTap;
+  final bool loading;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.card,
+      borderRadius: BorderRadius.circular(AppRadius.pill),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppRadius.pill),
+        onTap: loading ? null : onTap,
+        child: Container(
+          height: 54,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppRadius.pill),
+            border: Border.all(color: AppColors.separator, width: 1.4),
+          ),
+          child: loading
+              ? const ThreeDotLoader(color: AppColors.label, size: 9)
+              : Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const _GoogleGlyph(size: 20),
+                    const SizedBox(width: AppSpacing.md),
+                    Text(
+                      'Continue with Google',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.label,
+                      ),
+                    ),
+                  ],
+                ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The Google "G" drawn with its four brand colours.
+class _GoogleGlyph extends StatelessWidget {
+  const _GoogleGlyph({required this.size});
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: size,
+      height: size,
+      child: CustomPaint(painter: _GoogleGlyphPainter()),
+    );
+  }
+}
+
+class _GoogleGlyphPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width;
+    final stroke = w * 0.22;
+    final rect = Rect.fromLTWH(
+      stroke / 2,
+      stroke / 2,
+      w - stroke,
+      w - stroke,
+    );
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = stroke
+      ..strokeCap = StrokeCap.butt;
+
+    // Four arcs in Google's brand colours (blue, green, yellow, red).
+    void arc(double startDeg, double sweepDeg, Color color) {
+      paint.color = color;
+      canvas.drawArc(
+        rect,
+        startDeg * 3.1415926 / 180,
+        sweepDeg * 3.1415926 / 180,
+        false,
+        paint,
+      );
+    }
+
+    arc(-20, 80, const Color(0xFF4285F4)); // blue (right)
+    arc(60, 90, const Color(0xFF34A853)); // green (bottom)
+    arc(150, 70, const Color(0xFFFBBC05)); // yellow (left)
+    arc(220, 70, const Color(0xFFEA4335)); // red (top-left)
+
+    // The blue horizontal bar of the G.
+    final barPaint = Paint()..color = const Color(0xFF4285F4);
+    canvas.drawRect(
+      Rect.fromLTWH(w * 0.52, w * 0.4, w * 0.46, stroke),
+      barPaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

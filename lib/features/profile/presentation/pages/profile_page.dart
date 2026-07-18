@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../../../app/di/injection.dart';
 import '../../../../app/router/app_routes.dart';
 import '../../../../core/branding/app_icons.dart';
 import '../../../../core/services/app_feedback.dart';
@@ -21,6 +22,9 @@ import '../../../../core/widgets/neu/neu_tappable.dart';
 import '../../../auth/domain/entities/app_user.dart';
 import '../../../auth/domain/entities/user_role.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
+import '../../../subscription/data/subscription_store.dart';
+import '../../../subscription/domain/entities/subscription_plan.dart';
+import '../../../subscription/presentation/pages/paywall_page.dart';
 
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
@@ -77,6 +81,11 @@ class ProfilePage extends StatelessWidget {
                   'Settings & preferences',
                   onTap: () => context.push(AppRoutes.settings),
                 ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              const FadeSlideIn(
+                delay: Duration(milliseconds: 200),
+                child: _PartnerTile(),
               ),
               const SizedBox(height: AppSpacing.xxl),
               FadeSlideIn(
@@ -337,15 +346,20 @@ class _AvatarEditorState extends State<_AvatarEditor> {
   }
 }
 
-/// A fixed pill showing the account type. Seekers and agencies are distinct
-/// accounts — there is no in-app switch between them.
+/// A fixed pill showing the account type. Seekers, agencies and partners are
+/// distinct accounts — the only in-app transition is a seeker upgrading to a
+/// (paid) Partner.
 class _RoleBadge extends StatelessWidget {
   const _RoleBadge({required this.role});
   final UserRole role;
 
   @override
   Widget build(BuildContext context) {
-    final isAgency = role == UserRole.host;
+    final (icon, label) = switch (role) {
+      UserRole.host => (AppIcons.agency, 'Agency account'),
+      UserRole.partner => (AppIcons.partner, 'Partner account'),
+      UserRole.seeker => (AppIcons.seeker, 'Seeker account'),
+    };
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
@@ -355,14 +369,10 @@ class _RoleBadge extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            isAgency ? AppIcons.agency : AppIcons.seeker,
-            size: 12,
-            color: AppColors.onAccent,
-          ),
+          Icon(icon, size: 12, color: AppColors.onAccent),
           const SizedBox(width: 5),
           Text(
-            isAgency ? 'Agency account' : 'Seeker account',
+            label,
             style: const TextStyle(
               color: AppColors.onAccent,
               fontSize: 12,
@@ -424,6 +434,169 @@ class _Tile extends StatelessWidget {
           const Icon(
             AppIcons.chevronRight,
             color: AppColors.textTertiary,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Role-aware entry to the Partner programme. Seekers see a promo to upgrade
+/// (paid, behind the paywall); Partners see a shortcut to manage their plan;
+/// agencies see nothing (they're provisioned by Nesty).
+class _PartnerTile extends StatelessWidget {
+  const _PartnerTile();
+
+  Future<void> _openPaywall(BuildContext context) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const PaywallPage(upgrade: true)),
+    );
+  }
+
+  /// Partner subscription management — shows the plan and the two ways out
+  /// (change plan, or cancel — which is what drops them back to a seeker).
+  void _manage(BuildContext context) {
+    final store = sl<SubscriptionStore>();
+    final authCubit = context.read<AuthCubit>();
+    final sub = store.current;
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (sheetContext) {
+        final renew = sub?.currentPeriodEnd;
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.gutter,
+            AppSpacing.sm,
+            AppSpacing.gutter,
+            AppSpacing.xl,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                '${sub?.plan.label ?? 'Partner'} plan',
+                style: Theme.of(sheetContext).textTheme.titleLarge,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                renew == null
+                    ? 'Active subscription.'
+                    : 'Renews ${renew.day}/${renew.month}/${renew.year}.',
+                style: Theme.of(sheetContext).textTheme.bodyMedium,
+              ),
+              const SizedBox(height: AppSpacing.xl),
+              NeuButton(
+                label: 'Change plan',
+                icon: AppIcons.trending,
+                onPressed: () {
+                  Navigator.of(sheetContext).pop();
+                  _openPaywall(context);
+                },
+              ),
+              const SizedBox(height: AppSpacing.md),
+              NeuButton(
+                label: 'Cancel subscription',
+                filled: false,
+                icon: AppIcons.close,
+                onPressed: () async {
+                  Navigator.of(sheetContext).pop();
+                  final error = await store.cancel();
+                  if (error == null) {
+                    // Cancelling is one of the only two ways back to a seeker.
+                    await authCubit.switchRole(UserRole.seeker);
+                  }
+                  if (!context.mounted) return;
+                  if (error == null) {
+                    AppFeedback.success(
+                      context,
+                      'Subscription cancelled — you\'re back to a seeker account.',
+                    );
+                  } else {
+                    AppFeedback.error(context, error);
+                  }
+                },
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Text(
+                'Your Partner space stays available until the plan ends. You '
+                'can only return to a seeker account by cancelling or letting '
+                'it lapse.',
+                style: Theme.of(sheetContext).textTheme.bodySmall?.copyWith(
+                      color: AppColors.textTertiary,
+                    ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final role = context.select<AuthCubit, UserRole>(
+      (c) => c.state.user?.role ?? UserRole.seeker,
+    );
+
+    if (role == UserRole.partner) {
+      return _Tile(
+        AppIcons.subscription,
+        'Manage subscription',
+        onTap: () => _manage(context),
+      );
+    }
+    if (role == UserRole.host) return const SizedBox.shrink();
+
+    // Seeker — a promo to become a Partner.
+    final theme = Theme.of(context);
+    return NeuTappable(
+      onTap: () => _openPaywall(context),
+      borderRadius: AppRadius.lg,
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      color: AppColors.accent,
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: AppColors.onAccent.withValues(alpha: 0.16),
+              borderRadius: BorderRadius.circular(AppRadius.sm),
+            ),
+            child: const Icon(
+              AppIcons.partner,
+              color: AppColors.onAccent,
+              size: 22,
+            ),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Become a Partner',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    color: AppColors.onAccent,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'List homes from your network and earn. Subscription plans.',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: AppColors.onAccent.withValues(alpha: 0.8),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Icon(
+            AppIcons.chevronRight,
+            color: AppColors.onAccent,
           ),
         ],
       ),

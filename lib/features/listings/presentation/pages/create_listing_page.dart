@@ -19,7 +19,6 @@ import '../../../auth/presentation/cubit/auth_cubit.dart';
 import '../../data/datasources/local_listings_store.dart';
 import '../../data/models/property_model.dart';
 import '../../domain/entities/property.dart';
-import '../../domain/entities/property_room.dart';
 
 /// A publish failure carrying a message that's safe to show the host.
 class _PublishError implements Exception {
@@ -28,9 +27,9 @@ class _PublishError implements Exception {
 }
 
 /// The host's "publish a place" flow. A single, calm, sectioned form that turns
-/// a few details and a cover into a live listing — complete with rooms wired
-/// for the 3D tour. When connected to Supabase it publishes to the shared
-/// catalog (photos uploaded to Storage) exactly like the web dashboard.
+/// a few details and a cover into a live listing. When connected to Supabase it
+/// publishes to the shared catalog (photos uploaded to Storage) exactly like the
+/// web dashboard.
 class CreateListingPage extends StatefulWidget {
   const CreateListingPage({super.key});
 
@@ -53,7 +52,6 @@ class _CreateListingPageState extends State<CreateListingPage> {
   int _area = 45;
   int _cover = 0;
   final Set<String> _amenities = {'Wi-Fi'};
-  final List<RoomType> _rooms = [RoomType.livingRoom, RoomType.bedroom];
   final List<String> _photos = []; // local file paths the host imported
   final ImagePicker _picker = ImagePicker();
   bool _submitting = false;
@@ -84,44 +82,6 @@ class _CreateListingPageState extends State<CreateListingPage> {
     'Bills included',
   ];
 
-  // Curated stock photos per room type, so every published room has enough
-  // frames for the 3D reconstruction to light up.
-  static const _roomPhotos = <RoomType, List<String>>{
-    RoomType.livingRoom: [
-      'https://images.unsplash.com/photo-1493809842364-78817add7ffb?w=1000&q=80',
-      'https://images.unsplash.com/photo-1524758631624-e2822e304c36?w=1000&q=80',
-      'https://images.unsplash.com/photo-1567767292278-a4f21aa2d36e?w=1000&q=80',
-    ],
-    RoomType.bedroom: [
-      'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?w=1000&q=80',
-      'https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?w=1000&q=80',
-      'https://images.unsplash.com/photo-1560185007-cde436f6a4d0?w=1000&q=80',
-    ],
-    RoomType.kitchen: [
-      'https://images.unsplash.com/photo-1556911220-bff31c812dba?w=1000&q=80',
-      'https://images.unsplash.com/photo-1600489000022-c2086d79f9d4?w=1000&q=80',
-      'https://images.unsplash.com/photo-1556909212-d5b604d0c90d?w=1000&q=80',
-    ],
-    RoomType.bathroom: [
-      'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?w=1000&q=80',
-      'https://images.unsplash.com/photo-1620626011761-996317b8d101?w=1000&q=80',
-      'https://images.unsplash.com/photo-1552321554-5fefe8c9ef14?w=1000&q=80',
-    ],
-    RoomType.diningRoom: [
-      'https://images.unsplash.com/photo-1615529182904-14819c35db37?w=1000&q=80',
-      'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1000&q=80',
-      'https://images.unsplash.com/photo-1600566753086-00f18fb6b3ea?w=1000&q=80',
-    ],
-    RoomType.other: [
-      'https://images.unsplash.com/photo-1484154218962-a197022b5858?w=1000&q=80',
-      'https://images.unsplash.com/photo-1505691938895-1758d7feb511?w=1000&q=80',
-      'https://images.unsplash.com/photo-1560185009-dddeb820c7b7?w=1000&q=80',
-    ],
-  };
-
-  static const _panorama =
-      'https://cdn.aframe.io/360-image-gallery-boilerplate/img/city.jpg';
-
   @override
   void dispose() {
     _title.dispose();
@@ -137,7 +97,6 @@ class _CreateListingPageState extends State<CreateListingPage> {
     if (_city.text.trim().isEmpty) return 'Where is it? Add a city or area.';
     final price = double.tryParse(_price.text.trim());
     if (price == null || price <= 0) return 'Enter a monthly price in DT.';
-    if (_rooms.isEmpty) return 'Add at least one room for the tour.';
     return null;
   }
 
@@ -214,11 +173,9 @@ class _CreateListingPageState extends State<CreateListingPage> {
       ..['host_id'] = uid
       ..['status'] = 'active';
     // Drop optional columns when empty so publishing still works even if the
-    // location/tour migrations haven't been applied yet.
+    // location migration hasn't been applied yet.
     map.removeWhere(
-      (k, v) =>
-          (k == 'latitude' || k == 'longitude' || k == 'tour_3d_url') &&
-          v == null,
+      (k, v) => (k == 'latitude' || k == 'longitude') && v == null,
     );
 
     try {
@@ -262,24 +219,12 @@ class _CreateListingPageState extends State<CreateListingPage> {
     final id = 'user-${DateTime.now().millisecondsSinceEpoch}';
     final hostName = context.read<AuthCubit>().state.user?.displayName ?? 'You';
     final hasPhotos = images.isNotEmpty;
-    final rooms = <PropertyRoom>[
-      for (var i = 0; i < _rooms.length; i++)
-        PropertyRoom(
-          id: '$id-r$i',
-          name: _rooms[i].label,
-          type: _rooms[i],
-          images: hasPhotos
-              ? List<String>.from(images)
-              : (_roomPhotos[_rooms[i]] ?? _roomPhotos[RoomType.other]!),
-          panoramaUrl: i == 0 ? _panorama : null,
-        ),
-    ];
 
     final cover = hasPhotos ? images.first : _covers.first;
     final gallery = <String>{
       cover,
       ...images,
-      ...rooms.expand((r) => r.images),
+      if (!hasPhotos) ..._covers,
     }.take(8).toList();
 
     return PropertyModel(
@@ -299,12 +244,11 @@ class _CreateListingPageState extends State<CreateListingPage> {
       areaSqm: _area.toDouble(),
       coverImage: cover,
       gallery: gallery,
-      rooms: rooms,
       rating: 0,
       reviewCount: 0,
       hostName: hostName,
       description: _description.text.trim().isEmpty
-          ? 'A new place on Nesty, ready to tour in 3D before you visit.'
+          ? 'A new place on Nesty.'
           : _description.text.trim(),
       amenities: _amenities.toList(),
       isSuperhost: false,
@@ -437,8 +381,9 @@ class _CreateListingPageState extends State<CreateListingPage> {
                                 color: _term == t
                                     ? AppColors.ink
                                     : AppColors.fill,
-                                borderRadius:
-                                    BorderRadius.circular(AppRadius.sm),
+                                borderRadius: BorderRadius.circular(
+                                  AppRadius.sm,
+                                ),
                               ),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -552,38 +497,12 @@ class _CreateListingPageState extends State<CreateListingPage> {
                   ),
                   const SizedBox(height: AppSpacing.xl),
 
-                  Row(
-                    children: [
-                      _Label('Rooms for the 3D tour'),
-                      const Spacer(),
-                      Text(
-                        '${_rooms.length}',
-                        style: const TextStyle(
-                          color: AppColors.secondaryLabel,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  ..._rooms.asMap().entries.map(
-                    (e) => Padding(
-                      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                      child: _RoomRow(
-                        type: _rooms[e.key],
-                        onRemove: () =>
-                            setState(() => _rooms.removeAt(e.key)),
-                      ),
-                    ),
-                  ),
-                  _AddRoomButton(onAdd: (t) => setState(() => _rooms.add(t))),
-                  const SizedBox(height: AppSpacing.xl),
-
                   _Label('Description'),
                   const SizedBox(height: AppSpacing.sm),
                   NeuField(
                     controller: _description,
-                    placeholder: 'Tell seekers what makes this place feel like '
+                    placeholder:
+                        'Tell seekers what makes this place feel like '
                         'home…',
                     icon: Icons.notes_rounded,
                     textInputAction: TextInputAction.newline,
@@ -693,15 +612,20 @@ class _CoverPicker extends StatelessWidget {
                 child: const Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.add_a_photo_outlined,
-                        size: 22, color: AppColors.ink),
+                    Icon(
+                      Icons.add_a_photo_outlined,
+                      size: 22,
+                      color: AppColors.ink,
+                    ),
                     SizedBox(height: 6),
-                    Text('Import',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.ink,
-                        )),
+                    Text(
+                      'Import',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.ink,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -814,7 +738,8 @@ class _TypeSelector extends StatelessWidget {
               ),
             ),
           ),
-          if (t != ListingType.values.last) const SizedBox(width: AppSpacing.sm),
+          if (t != ListingType.values.last)
+            const SizedBox(width: AppSpacing.sm),
         ],
       ],
     );
@@ -869,10 +794,7 @@ class _Stepper extends StatelessWidget {
             child: Text(
               '$value',
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontWeight: FontWeight.w800,
-                fontSize: 16,
-              ),
+              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
             ),
           ),
           _RoundBtn(
@@ -952,106 +874,6 @@ class _SelectChip extends StatelessWidget {
             fontWeight: FontWeight.w600,
             color: selected ? AppColors.onAccent : AppColors.label,
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _RoomRow extends StatelessWidget {
-  const _RoomRow({required this.type, required this.onRemove});
-  final RoomType type;
-  final VoidCallback onRemove;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.lg,
-        vertical: AppSpacing.md,
-      ),
-      decoration: BoxDecoration(
-        color: AppColors.card,
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        border: Border.all(color: AppColors.separator, width: 0.5),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.view_in_ar_rounded, size: 18, color: AppColors.ink),
-          const SizedBox(width: AppSpacing.md),
-          Expanded(
-            child: Text(
-              type.label,
-              style: const TextStyle(fontWeight: FontWeight.w600),
-            ),
-          ),
-          const Text(
-            '3 photos',
-            style: TextStyle(color: AppColors.secondaryLabel, fontSize: 12),
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          GestureDetector(
-            onTap: onRemove,
-            child: const Icon(
-              Icons.close_rounded,
-              size: 18,
-              color: AppColors.tertiaryLabel,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _AddRoomButton extends StatelessWidget {
-  const _AddRoomButton({required this.onAdd});
-  final ValueChanged<RoomType> onAdd;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () async {
-        final selected = await showModalBottomSheet<RoomType>(
-          context: context,
-          showDragHandle: true,
-          builder: (sheetContext) => SafeArea(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                for (final t in RoomType.values)
-                  ListTile(
-                    leading: const Icon(Icons.meeting_room_outlined),
-                    title: Text(t.label),
-                    onTap: () => Navigator.of(sheetContext).pop(t),
-                  ),
-                const SizedBox(height: AppSpacing.md),
-              ],
-            ),
-          ),
-        );
-        if (selected != null) onAdd(selected);
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(AppRadius.md),
-          border: Border.all(
-            color: AppColors.separator,
-            width: 1,
-          ),
-        ),
-        child: const Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.add_rounded, size: 18, color: AppColors.ink),
-            SizedBox(width: 6),
-            Text(
-              'Add a room',
-              style: TextStyle(fontWeight: FontWeight.w700),
-            ),
-          ],
         ),
       ),
     );

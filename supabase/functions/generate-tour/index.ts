@@ -12,7 +12,7 @@
 //   SERVICE_ROLE_KEY = <supabase service role key>          (server-side only)
 //
 // Invoke:
-//   POST { "listing_id": "<uuid>" }
+//   POST { "listing_id": "<uuid>", "mode": "kenburns" | "tripo" | "kling" }
 // ---------------------------------------------------------------------------
 
 import { createClient } from "jsr:@supabase/supabase-js@2";
@@ -25,7 +25,7 @@ const TOUR3D_URL = Deno.env.get("TOUR3D_URL") ?? "http://localhost:8000";
 
 Deno.serve(async (req) => {
   try {
-    const { listing_id } = await req.json();
+    const { listing_id, mode = "kenburns" } = await req.json();
     if (!listing_id) {
       return json({ error: "listing_id is required" }, 400);
     }
@@ -52,27 +52,34 @@ Deno.serve(async (req) => {
       return json({ error: "No photos to build a tour from" }, 422);
     }
 
-    // Ask the Tour3D service to render the walkthrough.
+    // Ask the Tour3D service to render the walkthrough / mesh / clip.
     const genRes = await fetch(`${TOUR3D_URL}/generate`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ listing_id, images, mode: "kenburns" }),
+      body: JSON.stringify({ listing_id, images, mode }),
     });
     if (!genRes.ok) {
       return json({ error: `Tour3D failed: ${await genRes.text()}` }, 502);
     }
     const gen = await genRes.json();
 
-    // The service returns a video_path/URL; in production it uploads to Storage
-    // and returns a public URL. Persist it so the app plays the tour.
-    const tourUrl = gen.public_url ?? gen.video_path;
+    // Route the result to the right column: tripo yields an explorable GLB
+    // mesh (model_3d_url); everything else yields a video (tour_3d_url).
+    let update: Record<string, string>;
+    if (mode === "tripo" && gen.model_url) {
+      update = { model_3d_url: gen.model_url };
+    } else {
+      update = {
+        tour_3d_url: gen.public_url ?? gen.video_url ?? gen.video_path,
+      };
+    }
     const { error: updErr } = await supabase
       .from("listings")
-      .update({ tour_3d_url: tourUrl })
+      .update(update)
       .eq("id", listing_id);
     if (updErr) return json({ error: updErr.message }, 500);
 
-    return json({ listing_id, tour_3d_url: tourUrl });
+    return json({ listing_id, mode, ...update });
   } catch (e) {
     return json({ error: String(e) }, 500);
   }

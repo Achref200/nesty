@@ -58,12 +58,6 @@ class _PropertyCardState extends State<PropertyCard> {
                   ),
                 ),
               ),
-              if (property.has3dTour)
-                Positioned(
-                  left: AppSpacing.md,
-                  top: AppSpacing.md,
-                  child: _Badge(),
-                ),
               Positioned(
                 right: AppSpacing.md,
                 top: AppSpacing.md,
@@ -91,11 +85,7 @@ class _PropertyCardState extends State<PropertyCard> {
                         style: theme.textTheme.titleMedium,
                       ),
                     ),
-                    const Icon(
-                      AppIcons.star,
-                      size: 15,
-                      color: AppColors.ink,
-                    ),
+                    const Icon(AppIcons.star, size: 15, color: AppColors.ink),
                     const SizedBox(width: 2),
                     Text(
                       property.rating.toStringAsFixed(2),
@@ -226,37 +216,6 @@ class _SaveButton extends StatelessWidget {
             color: saved ? AppColors.ink : AppColors.secondaryLabel,
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _Badge extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.md,
-        vertical: 6,
-      ),
-      decoration: BoxDecoration(
-        color: AppColors.ink,
-        borderRadius: BorderRadius.circular(AppRadius.pill),
-      ),
-      child: const Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(AppIcons.tour3d, size: 14, color: AppColors.onAccent),
-          SizedBox(width: 5),
-          Text(
-            '3D tour',
-            style: TextStyle(
-              color: AppColors.onAccent,
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
       ),
     );
   }

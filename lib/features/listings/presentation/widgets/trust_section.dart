@@ -67,8 +67,6 @@ class TrustSection extends StatelessWidget {
             label: 'Proof of ownership / mandate',
           ),
           _Check(passed: trust.locationVerified, label: 'Location confirmed'),
-          _Check(passed: trust.videoVerified, label: 'Video walkthrough'),
-          _Check(passed: trust.tourComplete, label: 'Full 3D room tour'),
           _Check(
             passed: trust.wellReviewed,
             label: 'Consistently well reviewed',

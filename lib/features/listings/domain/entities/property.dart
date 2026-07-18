@@ -1,7 +1,5 @@
 import 'package:equatable/equatable.dart';
 
-import 'property_room.dart';
-
 /// A property/colocation listing.
 enum ListingType { entirePlace, privateRoom, sharedRoom }
 
@@ -53,7 +51,6 @@ class Property extends Equatable {
     required this.areaSqm,
     required this.coverImage,
     required this.gallery,
-    required this.rooms,
     required this.rating,
     required this.reviewCount,
     required this.hostName,
@@ -64,7 +61,6 @@ class Property extends Equatable {
     this.tags = const [],
     this.latitude,
     this.longitude,
-    this.tour3dUrl,
     this.isFavorite = false,
     this.isSuperhost = false,
     this.availableFrom,
@@ -84,7 +80,6 @@ class Property extends Equatable {
   final double areaSqm;
   final String coverImage;
   final List<String> gallery;
-  final List<PropertyRoom> rooms;
   final double rating;
   final int reviewCount;
   final String hostName;
@@ -104,8 +99,6 @@ class Property extends Equatable {
   final double? latitude;
   final double? longitude;
 
-  /// Pre-rendered 3D walkthrough video generated from the room photos.
-  final String? tour3dUrl;
   final bool isFavorite;
 
   /// Realistic marketplace signals used across the UI.
@@ -113,12 +106,6 @@ class Property extends Equatable {
   final String? availableFrom;
   final bool billsIncluded;
   final int flatmates;
-
-  /// True when the place offers an immersive tour: a generated walkthrough, a
-  /// 360° panorama, or enough room photos to orbit.
-  bool get has3dTour =>
-      tour3dUrl != null ||
-      rooms.any((r) => r.canReconstruct || r.hasPanorama);
 
   Property copyWith({bool? isFavorite}) {
     return Property(
@@ -134,7 +121,6 @@ class Property extends Equatable {
       areaSqm: areaSqm,
       coverImage: coverImage,
       gallery: gallery,
-      rooms: rooms,
       rating: rating,
       reviewCount: reviewCount,
       hostName: hostName,
@@ -145,7 +131,6 @@ class Property extends Equatable {
       tags: tags,
       latitude: latitude,
       longitude: longitude,
-      tour3dUrl: tour3dUrl,
       isFavorite: isFavorite ?? this.isFavorite,
       isSuperhost: isSuperhost,
       availableFrom: availableFrom,

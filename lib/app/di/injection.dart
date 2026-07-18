@@ -1,7 +1,13 @@
 import 'package:get_it/get_it.dart';
+import 'package:http/http.dart' as http;
 
 import '../../core/config/supabase_config.dart';
 import '../../core/services/supabase_service.dart';
+import '../../features/assistant/data/datasources/assistant_remote_datasource.dart';
+import '../../features/assistant/data/datasources/gemini_remote_datasource.dart';
+import '../../features/assistant/data/repositories/assistant_repository_impl.dart';
+import '../../features/assistant/domain/repositories/assistant_repository.dart';
+import '../../features/assistant/domain/usecases/send_message_usecase.dart';
 import '../../features/auth/data/datasources/auth_remote_data_source.dart';
 import '../../features/auth/data/datasources/demo_auth_remote_data_source.dart';
 import '../../features/auth/data/datasources/supabase_auth_remote_data_source.dart';
@@ -27,6 +33,7 @@ import '../../features/listings/presentation/cubit/listings_cubit.dart';
 import '../../features/notifications/data/notifications_store.dart';
 import '../../features/reservations/data/reservations_store.dart';
 import '../../features/saved/presentation/cubit/saved_cubit.dart';
+import '../../features/subscription/data/subscription_store.dart';
 
 /// Global service locator.
 final GetIt sl = GetIt.instance;
@@ -88,4 +95,17 @@ Future<void> configureDependencies() async {
 
   // ---- Notifications (activity center) ----
   sl.registerLazySingleton(() => NotificationsStore());
+
+  // ---- Subscription (Partner paywall & plan) ----
+  sl.registerLazySingleton(() => SubscriptionStore());
+
+  // ---- AI assistant (contextual, available everywhere) ----
+  sl.registerLazySingleton(() => http.Client());
+  sl.registerLazySingleton<AssistantRemoteDataSource>(
+    () => GeminiRemoteDataSourceImpl(client: sl()),
+  );
+  sl.registerLazySingleton<AssistantRepository>(
+    () => AssistantRepositoryImpl(remoteDataSource: sl()),
+  );
+  sl.registerLazySingleton(() => SendMessageUseCase(sl()));
 }

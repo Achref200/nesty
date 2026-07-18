@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/branding/app_icons.dart';
+import '../../../../core/config/ai_config.dart';
 import '../../../../core/format/money.dart';
 import '../../../../core/services/analytics_service.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -13,13 +14,13 @@ import '../../../../core/widgets/motion/fade_slide_in.dart';
 import '../../../../core/widgets/neu/neu_button.dart';
 import '../../../../core/widgets/neu/neu_icon_button.dart';
 import '../../../../core/widgets/neu/neu_surface.dart';
+import '../../../assistant/presentation/widgets/assistant_sheet.dart';
 import '../../../saved/presentation/cubit/saved_cubit.dart';
 import '../../../reservations/presentation/pages/reservation_flow_page.dart';
 import '../../domain/entities/property.dart';
-import '../../domain/entities/property_room.dart';
 import '../../domain/entities/trust_info.dart';
 import '../cubit/listing_details_cubit.dart';
-import '../widgets/tour_3d_hero.dart';
+import '../widgets/neighborhood_section.dart';
 import '../widgets/trust_section.dart';
 
 class ListingDetailsPage extends StatelessWidget {
@@ -95,7 +96,16 @@ class _Content extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: AppSpacing.lg),
-                Tour3dHero(property: property),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(AppRadius.lg),
+                  child: AspectRatio(
+                    aspectRatio: 16 / 11,
+                    child: Hero(
+                      tag: 'property-image-${property.id}',
+                      child: AppImage(property.coverImage, fit: BoxFit.cover),
+                    ),
+                  ),
+                ),
                 const SizedBox(height: AppSpacing.xl),
                 FadeSlideIn(
                   delay: const Duration(milliseconds: 60),
@@ -107,11 +117,7 @@ class _Content extends StatelessWidget {
                           style: theme.textTheme.titleLarge,
                         ),
                       ),
-                      const Icon(
-                        AppIcons.star,
-                        size: 18,
-                        color: AppColors.ink,
-                      ),
+                      const Icon(AppIcons.star, size: 18, color: AppColors.ink),
                       const SizedBox(width: 3),
                       Text(
                         property.rating.toStringAsFixed(2),
@@ -156,18 +162,6 @@ class _Content extends StatelessWidget {
                 ),
                 const SizedBox(height: AppSpacing.xl),
                 FadeSlideIn(
-                  delay: const Duration(milliseconds: 210),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Rooms in 3D', style: theme.textTheme.titleMedium),
-                      const SizedBox(height: AppSpacing.md),
-                      _RoomStrip(rooms: property.rooms),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.xl),
-                FadeSlideIn(
                   delay: const Duration(milliseconds: 260),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -186,6 +180,12 @@ class _Content extends StatelessWidget {
                     ],
                   ),
                 ),
+                const SizedBox(height: AppSpacing.lg),
+                if (AiConfig.enabled)
+                  FadeSlideIn(
+                    delay: const Duration(milliseconds: 290),
+                    child: _AskAiCard(property: property),
+                  ),
                 const SizedBox(height: AppSpacing.xl),
                 FadeSlideIn(
                   delay: const Duration(milliseconds: 310),
@@ -197,6 +197,11 @@ class _Content extends StatelessWidget {
                       _Amenities(amenities: property.amenities),
                     ],
                   ),
+                ),
+                const SizedBox(height: AppSpacing.xl),
+                FadeSlideIn(
+                  delay: const Duration(milliseconds: 340),
+                  child: NeighborhoodSection(property: property),
                 ),
                 const SizedBox(height: AppSpacing.xl),
                 FadeSlideIn(
@@ -277,69 +282,6 @@ class _Fact extends StatelessWidget {
   }
 }
 
-class _RoomStrip extends StatelessWidget {
-  const _RoomStrip({required this.rooms});
-  final List<PropertyRoom> rooms;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 132,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: rooms.length,
-        separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.md),
-        itemBuilder: (context, index) {
-          final room = rooms[index];
-          return SizedBox(
-            width: 150,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(AppRadius.md),
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        AppImage(room.images.first, fit: BoxFit.cover),
-                        if (room.canReconstruct)
-                          const Positioned(
-                            right: 8,
-                            top: 8,
-                            child: Icon(
-                              AppIcons.tour3d,
-                              color: Colors.white,
-                              size: 18,
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  room.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontWeight: FontWeight.w600),
-                ),
-                Text(
-                  room.type.label,
-                  style: const TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
-          );
-        },
-      ),
-    );
-  }
-}
-
 class _Amenities extends StatelessWidget {
   const _Amenities({required this.amenities});
   final List<String> amenities;
@@ -371,6 +313,98 @@ class _Amenities extends StatelessWidget {
   }
 }
 
+String _listingContext(Property p) {
+  final price = '${p.pricePerMonth.toStringAsFixed(0)} ${p.currency}/month';
+  final amenities = p.amenities.isEmpty
+      ? 'none listed'
+      : p.amenities.join(', ');
+  return [
+    'The user is viewing a specific listing on Nestly. Answer about THIS place.',
+    'Title: ${p.title}',
+    'Type: ${p.type.label} (${p.rentalTerm.label})',
+    'Location: ${p.city} \u2014 ${p.address}',
+    'Price: $price${p.billsIncluded ? ' (bills included)' : ''}',
+    'Bedrooms: ${p.bedrooms}, Bathrooms: ${p.bathrooms}, '
+        'Area: ${p.areaSqm.toStringAsFixed(0)} m\u00b2',
+    'Rating: ${p.rating.toStringAsFixed(2)} from ${p.reviewCount} reviews'
+        '${p.isSuperhost ? ', superhost' : ''}',
+    'Host: ${p.hostName}',
+    if (p.flatmates > 0) 'Flatmates: ${p.flatmates}',
+    'Amenities: $amenities',
+    'Description: ${p.description}',
+  ].join('\n');
+}
+
+class _AskAiCard extends StatelessWidget {
+  const _AskAiCard({required this.property});
+  final Property property;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.selectionClick();
+        showAssistant(
+          context,
+          subtitle: property.title,
+          contextNote: _listingContext(property),
+          suggestions: const [
+            'Is this a fair price for the area?',
+            'What should I ask the host?',
+            'Give me the pros and cons',
+          ],
+        );
+      },
+      child: NeuSurface(
+        borderRadius: AppRadius.md,
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: Row(
+          children: [
+            Container(
+              width: 42,
+              height: 42,
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [AppColors.ink, AppColors.inkSoft],
+                ),
+              ),
+              child: const Icon(
+                AppIcons.assistant,
+                color: AppColors.white,
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Ask Nesty AI about this place',
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                  const SizedBox(height: 2),
+                  const Text(
+                    'Deal check, what to ask the host, pros & cons\u2026',
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(AppIcons.chevronRight, color: AppColors.tertiaryLabel),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _HostRow extends StatelessWidget {
   const _HostRow({required this.hostName, required this.type});
   final String hostName;
@@ -384,10 +418,7 @@ class _HostRow extends StatelessWidget {
           borderRadius: AppRadius.pill,
           depth: 5,
           padding: const EdgeInsets.all(14),
-          child: const Icon(
-            AppIcons.profile,
-            color: AppColors.textPrimary,
-          ),
+          child: const Icon(AppIcons.profile, color: AppColors.textPrimary),
         ),
         const SizedBox(width: AppSpacing.md),
         Column(

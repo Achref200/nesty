@@ -14,3 +14,8 @@ requests==2.32.3
 #   - COLMAP            https://colmap.github.io/
 #   - nerfstudio        https://docs.nerf.studio/
 #   - gaussian-splatting https://github.com/graphdeco-inria/gaussian-splatting
+
+# Real depth → 3D point cloud (depth.py) is optional and heavy. Install when you
+# want real depth maps / point clouds instead of the app's on-device estimate:
+#   pip install torch torchvision timm
+# (CPU works with MiDaS_small; a GPU is much faster and enables DPT_Large.)

@@ -56,7 +56,17 @@ abstract final class AppIcons {
   // Roles / people
   static const IconData seeker = LucideIcons.search;
   static const IconData agency = LucideIcons.building2;
+  static const IconData partner = LucideIcons.network;
   static const IconData verified = LucideIcons.badgeCheck;
+
+  // Subscription / paywall
+  static const IconData subscription = LucideIcons.crown;
+  static const IconData planStandard = LucideIcons.zap;
+  static const IconData planPremium = LucideIcons.gem;
+  static const IconData planCustom = LucideIcons.rocket;
+  static const IconData billing = LucideIcons.creditCard;
+  static const IconData wallet = LucideIcons.wallet;
+  static const IconData trending = LucideIcons.trendingUp;
 
   // Profile / meta
   static const IconData bell = LucideIcons.bell;
@@ -72,4 +82,10 @@ abstract final class AppIcons {
   // Cover / media
   static const IconData image = LucideIcons.image;
   static const IconData camera = LucideIcons.camera;
+
+  // Assistant (Nesty AI)
+  static const IconData assistant = LucideIcons.sparkles;
+  static const IconData mic = LucideIcons.mic;
+  static const IconData micOff = LucideIcons.micOff;
+  static const IconData arrowUpRight = LucideIcons.arrowUpRight;
 }
