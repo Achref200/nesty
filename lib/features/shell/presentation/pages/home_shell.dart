@@ -17,6 +17,7 @@ import '../../../listings/presentation/pages/my_listings_page.dart';
 import '../../../../core/widgets/ios/liquid_glass.dart';
 import '../../../notifications/data/notifications_store.dart';
 import '../../../profile/presentation/pages/profile_page.dart';
+import '../../../settings/presentation/pages/settings_page.dart';
 import '../../../partner/presentation/pages/partner_home_page.dart';
 import '../../../reservations/data/reservations_store.dart';
 import '../../../reservations/presentation/pages/host_calendar_page.dart';
@@ -24,6 +25,7 @@ import '../../../reservations/presentation/pages/my_trips_page.dart';
 import '../../../saved/presentation/pages/saved_page.dart';
 import '../../../subscription/data/subscription_store.dart';
 import '../../../subscription/presentation/partner_gate.dart';
+import '../../../verification/data/verification_store.dart';
 
 /// Root shell with a floating "Liquid Glass" tab bar that hovers above the
 /// content. The selected tab expands into a solid brand lozenge. The tab set is
@@ -46,6 +48,8 @@ class _HomeShellState extends State<HomeShell> {
     sl<ReservationsStore>().load();
     // Load & live-subscribe to the notification center.
     sl<NotificationsStore>().load();
+    // Load the one-time identity-verification state.
+    sl<VerificationStore>().load();
     // Load the Partner subscription, then enforce the rule that a Partner must
     // hold an active plan — otherwise they revert to a simple seeker.
     WidgetsBinding.instance.addPostFrameCallback((_) => _syncPartnerAccess());
@@ -107,12 +111,12 @@ class _HomeShellState extends State<HomeShell> {
         _TabItem(AppIcons.profile, AppIcons.profile, 'Profile'),
       ];
     } else {
-      pages = const [HomePage(), SavedPage(), MyTripsPage(), ProfilePage()];
+      pages = const [HomePage(), SavedPage(), MyTripsPage(), SettingsPage()];
       tabs = const [
         _TabItem(AppIcons.explore, AppIcons.explore, 'Explore'),
         _TabItem(AppIcons.saved, AppIcons.saved, 'Saved'),
         _TabItem(AppIcons.trips, AppIcons.trips, 'Trips'),
-        _TabItem(AppIcons.profile, AppIcons.profile, 'Profile'),
+        _TabItem(AppIcons.settings, AppIcons.settings, 'Settings'),
       ];
     }
 

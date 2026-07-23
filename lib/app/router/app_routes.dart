@@ -7,6 +7,7 @@ abstract final class AppRoutes {
   static const String listingDetails = '/listing/:id';
   static const String notifications = '/notifications';
   static const String settings = '/settings';
+  static const String profile = '/profile';
 
   static String listingDetailsPath(String id) => '/listing/$id';
 }

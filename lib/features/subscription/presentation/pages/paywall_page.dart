@@ -9,6 +9,7 @@ import '../../../../core/services/app_feedback.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/widgets/motion/fade_slide_in.dart';
+import '../../../../core/widgets/motion/nesty_loader.dart';
 import '../../../../core/widgets/motion/typing_text.dart';
 import '../../../auth/domain/entities/user_role.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
@@ -550,14 +551,7 @@ class _Footer extends StatelessWidget {
                   borderRadius: BorderRadius.circular(AppRadius.pill),
                 ),
                 child: busy
-                    ? const SizedBox(
-                        width: 22,
-                        height: 22,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2.2,
-                          color: _bg,
-                        ),
-                      )
+                    ? NestyLoader(size: 26, color: _bg)
                     : Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [

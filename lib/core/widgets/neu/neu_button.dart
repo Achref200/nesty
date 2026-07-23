@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
+import '../motion/nesty_loader.dart';
 
 /// Primary call-to-action. Two variants:
 /// * filled (near-black ink) for the main action on a screen
@@ -33,15 +34,9 @@ class NeuButton extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         if (loading)
-          SizedBox(
-            width: 20,
-            height: 20,
-            child: CircularProgressIndicator(
-              strokeWidth: 2.2,
-              valueColor: AlwaysStoppedAnimation<Color>(
-                filled ? AppColors.onAccent : AppColors.label,
-              ),
-            ),
+          NestyLoader(
+            size: 24,
+            color: filled ? AppColors.onAccent : AppColors.label,
           )
         else ...[
           if (icon != null) ...[

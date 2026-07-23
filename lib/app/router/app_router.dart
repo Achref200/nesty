@@ -12,6 +12,7 @@ import '../../features/listings/presentation/pages/listing_details_page.dart';
 import '../../features/notifications/presentation/pages/notifications_page.dart';
 import '../../features/onboarding/presentation/pages/splash_page.dart';
 import '../../features/onboarding/presentation/pages/welcome_page.dart';
+import '../../features/profile/presentation/pages/profile_page.dart';
 import '../../features/settings/presentation/pages/settings_page.dart';
 import '../../features/shell/presentation/pages/home_shell.dart';
 import '../di/injection.dart';
@@ -80,6 +81,11 @@ GoRouter createRouter(AuthCubit authCubit) {
       GoRoute(
         path: AppRoutes.settings,
         pageBuilder: (_, _) => const MaterialPage(child: SettingsPage()),
+      ),
+      GoRoute(
+        path: AppRoutes.profile,
+        pageBuilder: (_, _) =>
+            const MaterialPage(child: ProfilePage(showBack: true)),
       ),
     ],
   );

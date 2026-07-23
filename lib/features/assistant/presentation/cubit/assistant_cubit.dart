@@ -55,6 +55,9 @@ class AssistantCubit extends Cubit<AssistantState> {
         contextNote: state.contextNote,
       ),
       history: _historyForModel(),
+      context: state.contextNote,
+      languageCode: languageCode,
+      userName: userName,
     );
     if (isClosed) return;
     result.fold(

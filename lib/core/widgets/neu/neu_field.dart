@@ -18,6 +18,7 @@ class NeuField extends StatefulWidget {
     this.textInputAction,
     this.onSubmitted,
     this.autofillHints,
+    this.textCapitalization = TextCapitalization.none,
   });
 
   final String placeholder;
@@ -28,6 +29,7 @@ class NeuField extends StatefulWidget {
   final TextInputAction? textInputAction;
   final ValueChanged<String>? onSubmitted;
   final Iterable<String>? autofillHints;
+  final TextCapitalization textCapitalization;
 
   @override
   State<NeuField> createState() => _NeuFieldState();
@@ -47,6 +49,7 @@ class _NeuFieldState extends State<NeuField> {
         obscureText: _obscured,
         keyboardType: widget.keyboardType,
         textInputAction: widget.textInputAction,
+        textCapitalization: widget.textCapitalization,
         onSubmitted: widget.onSubmitted,
         autofillHints: widget.autofillHints,
         cursorColor: AppColors.accent,

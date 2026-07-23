@@ -30,10 +30,11 @@ begin
   -- Create real auth users so the demo seekers can actually sign in. The
   -- handle_new_user trigger creates their public.profiles row from metadata.
   for r in (
-    values
+    select * from (values
       (v_ahmed, 'ahmed.seeker@nesty.tn', 'Ahmed Ben Salah'),
       (v_salma, 'salma.seeker@nesty.tn', 'Salma Trabelsi')
-  ) as t(id, email, full_name)
+    ) as t(id, email, full_name)
+  )
   loop
     if not exists (select 1 from auth.users where id = r.id) then
       insert into auth.users (
@@ -43,7 +44,8 @@ begin
         confirmation_token, recovery_token, email_change_token_new, email_change
       ) values (
         '00000000-0000-0000-0000-000000000000', r.id, 'authenticated',
-        'authenticated', r.email, crypt('Nesty#Demo2026', gen_salt('bf')),
+        'authenticated', r.email,
+        extensions.crypt('Nesty#Demo2026', extensions.gen_salt('bf')),
         now(), '{"provider":"email","providers":["email"]}'::jsonb,
         jsonb_build_object('full_name', r.full_name, 'role', 'seeker'),
         now(), now(), '', '', '', ''
@@ -77,6 +79,24 @@ begin
 
   if v_host is null then
     raise notice 'No host profile — run the catalog seed first. Skipping.';
+    return;
+  end if;
+
+  if exists (
+    select 1
+      from (values
+        ('11111111-1111-1111-1111-111111111101'::uuid),
+        ('11111111-1111-1111-1111-111111111102'::uuid),
+        ('11111111-1111-1111-1111-111111111103'::uuid),
+        ('11111111-1111-1111-1111-111111111104'::uuid),
+        ('11111111-1111-1111-1111-111111111105'::uuid),
+        ('11111111-1111-1111-1111-111111111106'::uuid)
+      ) as expected_listing(id)
+     where not exists (
+       select 1 from public.listings where id = expected_listing.id
+     )
+  ) then
+    raise notice 'Expected demo listings are absent. Skipping fixture data.';
     return;
   end if;
 

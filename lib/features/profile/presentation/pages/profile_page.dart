@@ -12,6 +12,7 @@ import '../../../../core/services/app_feedback.dart';
 import '../../../../core/services/cloudinary_service.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
+import '../../../../core/widgets/motion/nesty_loader.dart';
 import '../../../../core/widgets/app_image.dart';
 import '../../../../core/widgets/ios/ios_sliver_scaffold.dart';
 import '../../../../core/widgets/motion/fade_slide_in.dart';
@@ -25,14 +26,23 @@ import '../../../auth/presentation/cubit/auth_cubit.dart';
 import '../../../subscription/data/subscription_store.dart';
 import '../../../subscription/domain/entities/subscription_plan.dart';
 import '../../../subscription/presentation/pages/paywall_page.dart';
+import '../../../verification/presentation/widgets/verification_card.dart';
 
 class ProfilePage extends StatelessWidget {
-  const ProfilePage({super.key});
+  const ProfilePage({super.key, this.showBack = false});
+
+  final bool showBack;
 
   @override
   Widget build(BuildContext context) {
     return IosSliverScaffold(
       title: 'Profile',
+      leading: showBack
+          ? IconButton(
+              icon: const Icon(AppIcons.back, size: 20),
+              onPressed: () => Navigator.of(context).maybePop(),
+            )
+          : null,
       slivers: [
         SliverPadding(
           padding: const EdgeInsets.fromLTRB(
@@ -49,6 +59,11 @@ class ProfilePage extends StatelessWidget {
                     return _ProfileCard(user: state.user);
                   },
                 ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              const FadeSlideIn(
+                delay: Duration(milliseconds: 80),
+                child: VerificationCard(),
               ),
               const SizedBox(height: AppSpacing.xl),
               const FadeSlideIn(
@@ -306,14 +321,7 @@ class _AvatarEditorState extends State<_AvatarEditor> {
             clipBehavior: Clip.antiAlias,
             child: _busy
                 ? const Center(
-                    child: SizedBox(
-                      width: 22,
-                      height: 22,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: AppColors.ink,
-                      ),
-                    ),
+                    child: NestyLoader(size: 26),
                   )
                 : hasImage
                     ? AppImage(url, fit: BoxFit.cover)

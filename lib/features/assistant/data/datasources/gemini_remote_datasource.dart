@@ -18,6 +18,9 @@ class GeminiRemoteDataSourceImpl
   Future<String> generateReply({
     required String systemPrompt,
     required List<ChatMessage> history,
+    String? context,
+    String? languageCode,
+    String? userName,
   }) async {
     final apiKey = AiConfig.apiKey;
     if (apiKey.isEmpty) {

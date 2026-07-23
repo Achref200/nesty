@@ -5,7 +5,9 @@ import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../app/router/app_routes.dart';
 import '../../../../core/branding/app_icons.dart';
+import '../../../../core/branding/nestly_logo.dart';
 import '../../../../core/config/app_config.dart';
+import '../../../../core/localization/app_locale.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/widgets/motion/fade_slide_in.dart';
@@ -71,9 +73,9 @@ class _WelcomePageState extends State<WelcomePage> {
   /// continue to account creation (where the chosen plan is committed).
   Future<void> _chooseRole(UserRole role) async {
     if (role == UserRole.partner) {
-      final proceed = await Navigator.of(context).push<bool>(
-        MaterialPageRoute(builder: (_) => const PaywallPage()),
-      );
+      final proceed = await Navigator.of(
+        context,
+      ).push<bool>(MaterialPageRoute(builder: (_) => const PaywallPage()));
       if (proceed == true && mounted) {
         context.push(AppRoutes.auth, extra: role);
       }
@@ -100,7 +102,11 @@ class _WelcomePageState extends State<WelcomePage> {
               ),
               child: Row(
                 children: [
-                  const Icon(AppIcons.home, size: 20, color: AppColors.accent),
+                  const NestlyLogo(
+                    size: 24,
+                    color: AppColors.accent,
+                    progress: 1,
+                  ),
                   const SizedBox(width: AppSpacing.sm),
                   Text(AppConfig.appName, style: theme.textTheme.titleMedium),
                   const Spacer(),
@@ -116,8 +122,8 @@ class _WelcomePageState extends State<WelcomePage> {
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
                       onPressed: onRolePage ? null : _skip,
-                      child: const Text(
-                        'Skip',
+                      child: Text(
+                        context.copy('Skip', 'Passer'),
                         style: TextStyle(
                           color: AppColors.secondaryLabel,
                           fontWeight: FontWeight.w600,
@@ -206,6 +212,8 @@ class _VisionSlide extends StatelessWidget {
                       interactive: true,
                     ),
                     const SizedBox(height: AppSpacing.lg),
+                    const _AnimatedNestyMark(),
+                    const SizedBox(height: AppSpacing.md),
                     const _DragHint(),
                   ],
                 ),
@@ -214,14 +222,19 @@ class _VisionSlide extends StatelessWidget {
             const Spacer(flex: 1),
             Transform.translate(
               offset: Offset(delta * -40, 0),
-              child: Text('Tour before you', style: display),
+              child: Text(
+                context.copy('Tour before you', 'Visitez avant de'),
+                style: display,
+              ),
             ),
             SizedBox(
               height: display.fontSize! * (display.height ?? 1.1) + 6,
               child: Transform.translate(
                 offset: Offset(delta * -40, 0),
                 child: _TypewriterCycle(
-                  words: const ['visit.', 'commit.', 'decide.'],
+                  words: context.isFrench
+                      ? const ['visiter.', 'choisir.', 'décider.']
+                      : const ['visit.', 'commit.', 'decide.'],
                   style: display,
                 ),
               ),
@@ -230,8 +243,12 @@ class _VisionSlide extends StatelessWidget {
             Transform.translate(
               offset: Offset(delta * -22, 0),
               child: Text(
-                'Nesty rebuilds every home as an immersive 3D model. Grab it, '
-                'turn it, and walk through it — before you ever step inside.',
+                context.copy(
+                  'Nesty rebuilds every home as an immersive 3D model. Grab it, '
+                      'turn it, and walk through it before you ever step inside.',
+                  'Nesty reconstruit chaque logement en modèle 3D immersif. '
+                      'Faites-le tourner et explorez-le avant même votre visite.',
+                ),
                 style: theme.textTheme.bodyLarge?.copyWith(
                   color: AppColors.textSecondary,
                 ),
@@ -243,6 +260,37 @@ class _VisionSlide extends StatelessWidget {
       ),
     );
   }
+}
+
+class _AnimatedNestyMark extends StatefulWidget {
+  const _AnimatedNestyMark();
+
+  @override
+  State<_AnimatedNestyMark> createState() => _AnimatedNestyMarkState();
+}
+
+class _AnimatedNestyMarkState extends State<_AnimatedNestyMark>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1800),
+  )..repeat(reverse: true);
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AnimatedBuilder(
+    animation: _controller,
+    builder: (context, child) => Transform.scale(
+      scale: 0.92 + _controller.value * 0.08,
+      child: Opacity(opacity: 0.72 + _controller.value * 0.28, child: child),
+    ),
+    child: const NestlyLogo(size: 54, color: AppColors.accent, progress: 1),
+  );
 }
 
 /// A subtle, pulsing "drag me" affordance shown under the interactive cube.
@@ -432,7 +480,8 @@ class _ProximitySlideState extends State<_ProximitySlide> {
       if (perm == LocationPermission.denied) {
         perm = await Geolocator.requestPermission();
       }
-      final granted = perm == LocationPermission.always ||
+      final granted =
+          perm == LocationPermission.always ||
           perm == LocationPermission.whileInUse;
       if (serviceOn && granted) {
         await Geolocator.getCurrentPosition(
@@ -557,8 +606,7 @@ class _LocatingSceneState extends State<_LocatingScene>
               return Stack(
                 alignment: Alignment.center,
                 children: [
-                  for (int i = 0; i < 3; i++)
-                    _ring((_c.value + i / 3) % 1.0),
+                  for (int i = 0; i < 3; i++) _ring((_c.value + i / 3) % 1.0),
                 ],
               );
             },
@@ -689,15 +737,15 @@ class _ShowcaseSlideState extends State<_ShowcaseSlide> {
                               duration: const Duration(milliseconds: 450),
                               transitionBuilder: (child, animation) =>
                                   FadeTransition(
-                                opacity: animation,
-                                child: SlideTransition(
-                                  position: Tween<Offset>(
-                                    begin: const Offset(0, 0.12),
-                                    end: Offset.zero,
-                                  ).animate(animation),
-                                  child: child,
-                                ),
-                              ),
+                                    opacity: animation,
+                                    child: SlideTransition(
+                                      position: Tween<Offset>(
+                                        begin: const Offset(0, 0.12),
+                                        end: Offset.zero,
+                                      ).animate(animation),
+                                      child: child,
+                                    ),
+                                  ),
                               child: _FloatingReel(
                                 key: ValueKey(_i),
                                 reel: reel,
@@ -987,8 +1035,9 @@ class _RolePage extends StatefulWidget {
 class _RolePageState extends State<_RolePage> {
   static const _order = [UserRole.seeker, UserRole.partner, UserRole.host];
 
-  late final PageController _controller =
-      PageController(viewportFraction: 0.78);
+  late final PageController _controller = PageController(
+    viewportFraction: 0.78,
+  );
   double _page = 0;
 
   @override

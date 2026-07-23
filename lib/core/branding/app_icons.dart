@@ -82,6 +82,9 @@ abstract final class AppIcons {
   // Cover / media
   static const IconData image = LucideIcons.image;
   static const IconData camera = LucideIcons.camera;
+  static const IconData upload = LucideIcons.upload;
+  static const IconData document = LucideIcons.fileText;
+  static const IconData phone = LucideIcons.phone;
 
   // Assistant (Nesty AI)
   static const IconData assistant = LucideIcons.sparkles;

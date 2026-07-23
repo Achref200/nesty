@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 240" fill="none" width="200" height="240">
+  <!-- Nesty Logo — "The Nested Curves" — Dark Mode -->
+  
+  <style>
+    .arc-outer {
+      stroke: #FFFFFF;
+      stroke-width: 8;
+      stroke-linecap: round;
+      fill: none;
+      stroke-dasharray: 380;
+      stroke-dashoffset: 380;
+      animation: drawOuter 2s ease-in-out forwards;
+    }
+    .arc-middle {
+      stroke: #FFFFFF;
+      stroke-width: 6.5;
+      stroke-linecap: round;
+      fill: none;
+      stroke-dasharray: 300;
+      stroke-dashoffset: 300;
+      animation: drawMiddle 2s ease-in-out forwards;
+    }
+    .arc-inner {
+      stroke: #FFFFFF;
+      stroke-width: 5;
+      stroke-linecap: round;
+      fill: none;
+      stroke-dasharray: 220;
+      stroke-dashoffset: 220;
+      animation: drawInner 2s ease-in-out forwards;
+    }
+    .wordmark {
+      font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif;
+      font-size: 28px;
+      font-weight: 500;
+      fill: #FFFFFF;
+      letter-spacing: -0.02em;
+      opacity: 0;
+      animation: fadeIn 2s ease-in-out forwards;
+    }
+
+    @keyframes drawOuter {
+      0%, 5% { stroke-dashoffset: 380; }
+      30% { stroke-dashoffset: 0; }
+      100% { stroke-dashoffset: 0; }
+    }
+    @keyframes drawMiddle {
+      0%, 15% { stroke-dashoffset: 300; }
+      40% { stroke-dashoffset: 0; }
+      100% { stroke-dashoffset: 0; }
+    }
+    @keyframes drawInner {
+      0%, 25% { stroke-dashoffset: 220; }
+      50% { stroke-dashoffset: 0; }
+      100% { stroke-dashoffset: 0; }
+    }
+    @keyframes fadeIn {
+      0%, 40% { opacity: 0; }
+      60% { opacity: 1; }
+      100% { opacity: 1; }
+    }
+  </style>
+
+  <path class="arc-outer" d="M 20 120 C 20 45, 55 20, 100 20 C 145 20, 180 45, 180 120" />
+  <path class="arc-middle" d="M 42 125 C 42 62, 65 42, 100 42 C 135 42, 158 62, 158 125" />
+  <path class="arc-inner" d="M 62 130 C 62 80, 78 62, 100 62 C 122 62, 138 80, 138 130" />
+  <text class="wordmark" x="100" y="210" text-anchor="middle">nesty.</text>
+</svg>

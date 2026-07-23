@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:go_router/go_router.dart';
 
 import '../core/config/app_config.dart';
+import '../core/localization/app_locale.dart';
 import '../core/services/app_feedback.dart';
 import '../core/theme/app_theme.dart';
 import '../features/auth/presentation/cubit/auth_cubit.dart';
@@ -43,12 +45,22 @@ class _NestlyAppState extends State<NestlyApp> {
         BlocProvider.value(value: _authCubit),
         BlocProvider<SavedCubit>(create: (_) => sl<SavedCubit>()),
       ],
-      child: MaterialApp.router(
-        title: AppConfig.appName,
-        debugShowCheckedModeBanner: false,
-        scaffoldMessengerKey: AppFeedback.messengerKey,
-        theme: AppTheme.light,
-        routerConfig: router,
+      child: ValueListenableBuilder<Locale>(
+        valueListenable: AppLocale.instance,
+        builder: (context, locale, _) => MaterialApp.router(
+          title: AppConfig.appName,
+          debugShowCheckedModeBanner: false,
+          scaffoldMessengerKey: AppFeedback.messengerKey,
+          theme: AppTheme.light,
+          locale: locale,
+          supportedLocales: const [Locale('en'), Locale('fr')],
+          localizationsDelegates: const [
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          routerConfig: router,
+        ),
       ),
     );
   }

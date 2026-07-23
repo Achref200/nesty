@@ -7,5 +7,8 @@ abstract class AssistantRepository {
   Future<Either<AssistantFailure, String>> generateReply({
     required String systemPrompt,
     required List<ChatMessage> history,
+    String? context,
+    String? languageCode,
+    String? userName,
   });
 }

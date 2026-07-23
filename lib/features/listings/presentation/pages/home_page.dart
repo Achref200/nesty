@@ -161,7 +161,7 @@ class _HeaderActions extends StatelessWidget {
         ),
         const SizedBox(width: 6),
         GestureDetector(
-          onTap: () => context.push(AppRoutes.settings),
+          onTap: () => context.push(AppRoutes.profile),
           child: Container(
             width: 34,
             height: 34,

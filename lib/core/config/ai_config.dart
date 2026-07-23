@@ -43,4 +43,14 @@ abstract final class AiConfig {
     final p = provider.toLowerCase();
     return p == 'openai' || p == 'grok' || p == 'xai';
   }
+
+  /// Optional server proxy (the deployed web `/api/assistant`). When set, the
+  /// app routes AI through the server so NO provider key ships in the binary —
+  /// the recommended production setup. Supply via
+  /// `--dart-define=AI_ASSISTANT_PROXY_URL=https://your-app.vercel.app/api/assistant`.
+  static String get proxyUrl =>
+      const String.fromEnvironment('AI_ASSISTANT_PROXY_URL').trim();
+
+  /// True when a proxy endpoint is configured (preferred over an embedded key).
+  static bool get useProxy => proxyUrl.isNotEmpty;
 }

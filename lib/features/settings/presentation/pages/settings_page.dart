@@ -5,7 +5,10 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../app/router/app_routes.dart';
 import '../../../../core/branding/app_icons.dart';
+import '../../../../core/localization/app_locale.dart';
+import '../../../../core/services/app_feedback.dart';
 import '../../../../core/services/local_store.dart';
+import '../../../../core/services/supabase_service.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/widgets/neu/neu_button.dart';
@@ -34,6 +37,7 @@ class _SettingsPageState extends State<SettingsPage> {
       'push': true,
       'email': true,
       'reminders': true,
+      'inbox': true,
       'language': 'English',
       ...?LocalStore.instance.getJson(_key),
     };
@@ -42,7 +46,28 @@ class _SettingsPageState extends State<SettingsPage> {
   void _set(String key, Object value) {
     setState(() => _prefs[key] = value);
     LocalStore.instance.setJson(_key, _prefs);
+    if (key == 'push' ||
+        key == 'email' ||
+        key == 'reminders' ||
+        key == 'inbox') {
+      _syncNotificationPreferences();
+    }
     HapticFeedback.selectionClick();
+  }
+
+  Future<void> _syncNotificationPreferences() async {
+    if (!SupabaseService.isReady) return;
+    final userId = SupabaseService.client.auth.currentUser?.id;
+    if (userId == null) return;
+    try {
+      await SupabaseService.client.from('notification_preferences').upsert({
+        'user_id': userId,
+        'inbox_enabled': _prefs['inbox'] == true,
+        'updated_at': DateTime.now().toIso8601String(),
+      });
+    } catch (_) {
+      // Local preference remains active when the user is offline.
+    }
   }
 
   @override
@@ -52,7 +77,7 @@ class _SettingsPageState extends State<SettingsPage> {
       appBar: AppBar(
         backgroundColor: AppColors.background,
         surfaceTintColor: Colors.transparent,
-        title: const Text('Settings'),
+        title: Text(context.copy('Settings', 'Paramètres')),
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(
@@ -62,54 +87,80 @@ class _SettingsPageState extends State<SettingsPage> {
           AppSpacing.xxl,
         ),
         children: [
-          const _SectionLabel('Notifications'),
+          _SectionLabel(context.copy('Notifications', 'Notifications')),
           const SizedBox(height: AppSpacing.sm),
           _SwitchTile(
             icon: AppIcons.bell,
-            title: 'Push notifications',
-            subtitle: 'Visit and reservation updates',
+            title: context.copy('Push notifications', 'Notifications push'),
+            subtitle: context.copy(
+              'Visit and reservation updates',
+              'Mises à jour des visites et réservations',
+            ),
             value: _prefs['push'] == true,
             onChanged: (v) => _set('push', v),
           ),
           const SizedBox(height: AppSpacing.sm),
           _SwitchTile(
             icon: AppIcons.mail,
-            title: 'Email updates',
-            subtitle: 'Summaries and confirmations',
+            title: context.copy('Email updates', 'Mises à jour par e-mail'),
+            subtitle: context.copy(
+              'Summaries and confirmations',
+              'Récapitulatifs et confirmations',
+            ),
             value: _prefs['email'] == true,
             onChanged: (v) => _set('email', v),
           ),
           const SizedBox(height: AppSpacing.sm),
           _SwitchTile(
             icon: AppIcons.clock,
-            title: 'Reminders',
-            subtitle: 'A nudge before your visits',
+            title: context.copy('Reminders', 'Rappels'),
+            subtitle: context.copy(
+              'A nudge before your visits',
+              'Un rappel avant vos visites',
+            ),
             value: _prefs['reminders'] == true,
             onChanged: (v) => _set('reminders', v),
           ),
+          const SizedBox(height: AppSpacing.sm),
+          _SwitchTile(
+            icon: AppIcons.bell,
+            title: context.copy(
+              'In-app notifications',
+              'Notifications dans l’application',
+            ),
+            subtitle: context.copy(
+              'Verification and reservation updates',
+              'Mises à jour des vérifications et réservations',
+            ),
+            value: _prefs['inbox'] == true,
+            onChanged: (v) => _set('inbox', v),
+          ),
           const SizedBox(height: AppSpacing.xl),
 
-          const _SectionLabel('Preferences'),
+          _SectionLabel(context.copy('Preferences', 'Préférences')),
           const SizedBox(height: AppSpacing.sm),
           _NavTile(
             icon: Icons.translate_rounded,
-            title: 'Language',
+            title: context.copy('Language', 'Langue'),
             trailing: _prefs['language'] as String? ?? 'English',
             onTap: _pickLanguage,
           ),
           const SizedBox(height: AppSpacing.sm),
           _NavTile(
             icon: AppIcons.bell,
-            title: 'Notifications inbox',
+            title: context.copy(
+              'Notifications inbox',
+              'Boîte de notifications',
+            ),
             onTap: () => context.push(AppRoutes.notifications),
           ),
           const SizedBox(height: AppSpacing.xl),
 
-          const _SectionLabel('About'),
+          _SectionLabel(context.copy('About', 'À propos')),
           const SizedBox(height: AppSpacing.sm),
           _NavTile(
             icon: AppIcons.about,
-            title: 'What is Nesty?',
+            title: context.copy('What is Nesty?', 'Qu’est-ce que Nesty ?'),
             onTap: () => showModalBottomSheet<void>(
               context: context,
               isScrollControlled: true,
@@ -118,19 +169,30 @@ class _SettingsPageState extends State<SettingsPage> {
             ),
           ),
           const SizedBox(height: AppSpacing.sm),
-          const _NavTile(icon: AppIcons.shield, title: 'Privacy & security'),
+          _NavTile(
+            icon: AppIcons.shield,
+            title: context.copy(
+              'Privacy & security',
+              'Confidentialité et sécurité',
+            ),
+            onTap: () => AppFeedback.comingSoon(context),
+          ),
           const SizedBox(height: AppSpacing.sm),
-          const _NavTile(icon: AppIcons.help, title: 'Help center'),
+          _NavTile(
+            icon: AppIcons.help,
+            title: context.copy('Help center', 'Centre d’aide'),
+            onTap: () => AppFeedback.comingSoon(context),
+          ),
           const SizedBox(height: AppSpacing.sm),
-          const _NavTile(
+          _NavTile(
             icon: Icons.info_outline_rounded,
-            title: 'App version',
+            title: context.copy('App version', 'Version de l’application'),
             trailing: '1.0.0',
           ),
           const SizedBox(height: AppSpacing.xxl),
 
           NeuButton(
-            label: 'Sign out',
+            label: context.copy('Sign out', 'Se déconnecter'),
             filled: false,
             icon: AppIcons.signOut,
             onPressed: () => context.read<AuthCubit>().signOut(),
@@ -158,6 +220,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     : null,
                 onTap: () {
                   _set('language', o);
+                  AppLocale.instance.select(o);
                   Navigator.of(sheetContext).pop();
                 },
               ),

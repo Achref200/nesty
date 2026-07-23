@@ -13,11 +13,17 @@ class AssistantRepositoryImpl implements AssistantRepository {
   Future<Either<AssistantFailure, String>> generateReply({
     required String systemPrompt,
     required List<ChatMessage> history,
+    String? context,
+    String? languageCode,
+    String? userName,
   }) async {
     try {
       final reply = await remoteDataSource.generateReply(
         systemPrompt: systemPrompt,
         history: history,
+        context: context,
+        languageCode: languageCode,
+        userName: userName,
       );
       return Right(reply);
     } on AssistantApiException catch (e) {

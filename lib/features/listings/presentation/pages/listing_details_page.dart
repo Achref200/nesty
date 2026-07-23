@@ -10,6 +10,7 @@ import '../../../../core/services/analytics_service.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/widgets/app_image.dart';
+import '../../../../core/widgets/motion/nesty_loader.dart';
 import '../../../../core/widgets/motion/fade_slide_in.dart';
 import '../../../../core/widgets/neu/neu_button.dart';
 import '../../../../core/widgets/neu/neu_icon_button.dart';
@@ -33,9 +34,7 @@ class ListingDetailsPage extends StatelessWidget {
         builder: (context, state) {
           if (state.status == ListingDetailsStatus.loading ||
               state.status == ListingDetailsStatus.initial) {
-            return const Center(
-              child: CircularProgressIndicator(color: AppColors.accent),
-            );
+            return const Center(child: NestyLoader());
           }
           if (state.status == ListingDetailsStatus.failure ||
               state.property == null) {

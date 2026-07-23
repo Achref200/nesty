@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../../../../core/branding/app_icons.dart';
+import '../../../../core/branding/nestly_logo.dart';
 import '../../../../core/config/ai_config.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/ios/liquid_glass.dart';
@@ -51,10 +51,9 @@ class AssistantLauncher extends StatelessWidget {
           width: size,
           height: size,
           child: Center(
-            child: Icon(
-              AppIcons.assistant,
+            child: NestlyLogo(
+              size: size * 0.52,
               color: AppColors.white,
-              size: size * 0.42,
             ),
           ),
         ),

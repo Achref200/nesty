@@ -7,6 +7,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/widgets/ios/ios_sliver_scaffold.dart';
 import '../../../../core/widgets/motion/fade_slide_in.dart';
+import '../../../../core/widgets/motion/nesty_loader.dart';
 import '../../../../core/widgets/neu/neu_surface.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
 import '../../../reservations/data/reservations_store.dart';
@@ -420,13 +421,7 @@ class _EngagementSectionState extends State<_EngagementSection> {
     if (_loading) {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: AppSpacing.xl),
-        child: Center(
-          child: SizedBox(
-            width: 22,
-            height: 22,
-            child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.ink),
-          ),
-        ),
+        child: Center(child: NestyLoader(size: 56)),
       );
     }
     final s = _stats;

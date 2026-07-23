@@ -22,6 +22,9 @@ abstract class AssistantRemoteDataSource {
   Future<String> generateReply({
     required String systemPrompt,
     required List<ChatMessage> history,
+    String? context,
+    String? languageCode,
+    String? userName,
   });
 }
 

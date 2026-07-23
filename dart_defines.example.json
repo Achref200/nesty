@@ -1,0 +1,11 @@
+{
+  "_comment": "Copy this file to dart_defines.json (gitignored) and paste your real key. Then run/build with --dart-define-from-file=dart_defines.json so the AI key is compiled into the app. WITHOUT this, AiConfig.apiKey is empty and the assistant shows as unavailable in release builds — the reason 'AI works locally but not in the shipped app'. Values must be strings.",
+  "AI_ASSISTANT_ENABLED": "true",
+  "_recommended": "Set ONLY AI_ASSISTANT_PROXY_URL to your deployed web /api/assistant — then the server holds the key and NO key ships in the app. Leave AI_ASSISTANT_API_KEY empty. Fill the key ONLY if you are not using a proxy.",
+  "AI_ASSISTANT_PROXY_URL": "https://YOUR-DEPLOYED-WEB.vercel.app/api/assistant",
+  "AI_ASSISTANT_PROVIDER": "gemini",
+  "AI_ASSISTANT_API_KEY": "",
+  "AI_ASSISTANT_MODEL": "gemini-3.1-flash-lite",
+  "AI_ASSISTANT_FALLBACK_MODEL": "gemini-flash-lite-latest",
+  "AI_ASSISTANT_BASE_URL": "https://generativelanguage.googleapis.com/v1beta"
+}

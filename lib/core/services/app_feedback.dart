@@ -23,6 +23,9 @@ abstract final class AppFeedback {
   static void info(BuildContext context, String message) =>
       _show(context, message, AppIcons.bell);
 
+    static void comingSoon(BuildContext context) =>
+      info(context, 'Coming soon.');
+
   /// A vivid green success snackbar — for moments worth celebrating (sign-in).
   static void successToast(BuildContext context, String message) => _show(
         context,

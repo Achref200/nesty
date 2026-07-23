@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/config/app_config.dart';
+import '../../../../core/branding/nestly_logo.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/widgets/motion/shimmer.dart';
@@ -65,10 +66,13 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
                     borderRadius: 28,
                     depth: 12,
                     padding: const EdgeInsets.all(22),
-                    child: const Icon(
-                      Icons.home_rounded,
-                      size: 40,
-                      color: AppColors.accent,
+                    child: AnimatedBuilder(
+                      animation: _intro,
+                      builder: (context, _) => NestlyLogo(
+                        size: 52,
+                        color: AppColors.accent,
+                        progress: _intro.value,
+                      ),
                     ),
                   ),
                 ),

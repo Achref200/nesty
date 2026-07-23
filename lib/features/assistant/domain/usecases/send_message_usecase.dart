@@ -11,5 +11,14 @@ class SendMessageUseCase {
   Future<Either<AssistantFailure, String>> call({
     required String systemPrompt,
     required List<ChatMessage> history,
-  }) => repository.generateReply(systemPrompt: systemPrompt, history: history);
+    String? context,
+    String? languageCode,
+    String? userName,
+  }) => repository.generateReply(
+        systemPrompt: systemPrompt,
+        history: history,
+        context: context,
+        languageCode: languageCode,
+        userName: userName,
+      );
 }
