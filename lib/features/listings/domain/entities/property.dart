@@ -9,6 +9,12 @@ extension ListingTypeX on ListingType {
     ListingType.privateRoom => 'Private room',
     ListingType.sharedRoom => 'Colocation',
   };
+
+  String labelFor(bool french) => switch (this) {
+    ListingType.entirePlace => french ? 'Logement entier' : 'Entire place',
+    ListingType.privateRoom => french ? 'Chambre privée' : 'Private room',
+    ListingType.sharedRoom => 'Colocation',
+  };
 }
 
 /// How long the place is offered for. Tunisia has two very different demands:
@@ -26,9 +32,22 @@ extension RentalTermX on RentalTerm {
     RentalTerm.longTerm => 'Long term',
   };
 
+  String labelFor(bool french) => switch (this) {
+    RentalTerm.shortTerm => french ? 'Court séjour' : 'Short term',
+    RentalTerm.longTerm => french ? 'Longue durée' : 'Long term',
+  };
+
   String get blurb => switch (this) {
     RentalTerm.shortTerm => 'Summer & vacation stays',
     RentalTerm.longTerm => 'A year or more — students & families',
+  };
+
+  String blurbFor(bool french) => switch (this) {
+    RentalTerm.shortTerm =>
+      french ? 'Séjours d\'été & vacances' : 'Summer & vacation stays',
+    RentalTerm.longTerm => french
+        ? 'Un an ou plus — étudiants & familles'
+        : 'A year or more — students & families',
   };
 
   static RentalTerm fromId(String? value) => switch (value) {

@@ -6,6 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../../app/di/injection.dart';
+import '../../../../core/localization/app_locale.dart';
 import '../../../../core/services/cloudinary_service.dart';
 import '../../../../core/services/supabase_service.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -93,10 +94,25 @@ class _CreateListingPageState extends State<CreateListingPage> {
   }
 
   String? _validate() {
-    if (_title.text.trim().isEmpty) return 'Give your place a title.';
-    if (_city.text.trim().isEmpty) return 'Where is it? Add a city or area.';
+    if (_title.text.trim().isEmpty) {
+      return context.copy(
+        'Give your place a title.',
+        'Donnez un titre à votre logement.',
+      );
+    }
+    if (_city.text.trim().isEmpty) {
+      return context.copy(
+        'Where is it? Add a city or area.',
+        'Où est-ce ? Ajoutez une ville ou une zone.',
+      );
+    }
     final price = double.tryParse(_price.text.trim());
-    if (price == null || price <= 0) return 'Enter a monthly price in DT.';
+    if (price == null || price <= 0) {
+      return context.copy(
+        'Enter a monthly price in DT.',
+        'Saisissez un prix mensuel en DT.',
+      );
+    }
     return null;
   }
 
@@ -133,13 +149,16 @@ class _CreateListingPageState extends State<CreateListingPage> {
       return;
     }
     if (_submitting) return;
+    // Resolve the language now (synchronously) so the error copy below never
+    // touches BuildContext across the async publish gap.
+    final french = context.isFrench;
     setState(() {
       _submitting = true;
       _error = null;
     });
     try {
       if (SupabaseService.isReady) {
-        await _publishToSupabase();
+        await _publishToSupabase(french);
       } else {
         // Demo mode — keep it on-device so the feed still lights up.
         sl<LocalListingsStore>().add(_buildProperty(images: _photos));
@@ -153,19 +172,25 @@ class _CreateListingPageState extends State<CreateListingPage> {
         _submitting = false;
         _error = e is _PublishError
             ? e.message
-            : 'Couldn\'t publish. Check your connection and try again.';
+            : (french
+                  ? 'Impossible de publier. Vérifiez votre connexion.'
+                  : 'Couldn\'t publish. Check your connection and try again.');
       });
     }
   }
 
   /// Publishes to Supabase like the web dashboard: uploads the imported photos
   /// to Cloudinary, then inserts the listing so it appears for every seeker.
-  Future<void> _publishToSupabase() async {
+  Future<void> _publishToSupabase(bool french) async {
     final client = SupabaseService.client;
     final uid = client.auth.currentUser?.id;
-    if (uid == null) throw const _PublishError('Please sign in to publish.');
+    if (uid == null) {
+      throw _PublishError(
+        french ? 'Connectez-vous pour publier.' : 'Please sign in to publish.',
+      );
+    }
 
-    final urls = await _uploadPhotos();
+    final urls = await _uploadPhotos(french);
     final property = _buildProperty(images: urls);
 
     final map = property.toMap()
@@ -181,12 +206,12 @@ class _CreateListingPageState extends State<CreateListingPage> {
     try {
       await client.from('listings').insert(map);
     } catch (e) {
-      throw _PublishError(_friendlyDbError(e.toString()));
+      throw _PublishError(_friendlyDbError(e.toString(), french));
     }
   }
 
   /// Uploads the imported photos to Cloudinary and returns their URLs.
-  Future<List<String>> _uploadPhotos() async {
+  Future<List<String>> _uploadPhotos(bool french) async {
     final urls = <String>[];
     for (final path in _photos) {
       try {
@@ -194,23 +219,31 @@ class _CreateListingPageState extends State<CreateListingPage> {
       } on CloudinaryException catch (e) {
         throw _PublishError(e.message);
       } catch (_) {
-        throw const _PublishError(
-          'Couldn\'t upload your photos. Check your connection and try again.',
+        throw _PublishError(
+          french
+              ? 'Impossible d\'envoyer vos photos. Vérifiez votre connexion.'
+              : 'Couldn\'t upload your photos. Check your connection and try again.',
         );
       }
     }
     return urls;
   }
 
-  String _friendlyDbError(String raw) {
+  String _friendlyDbError(String raw, bool french) {
     final r = raw.toLowerCase();
     if (r.contains('row-level security') || r.contains('rls')) {
-      return 'Only agency accounts can publish listings.';
+      return french
+          ? 'Seuls les comptes agence peuvent publier des annonces.'
+          : 'Only agency accounts can publish listings.';
     }
     if (r.contains('column') && r.contains('does not exist')) {
-      return 'The database is missing a recent migration. Please run them.';
+      return french
+          ? 'Une migration récente manque dans la base de données.'
+          : 'The database is missing a recent migration. Please run them.';
     }
-    return 'Couldn\'t publish the listing. Please try again.';
+    return french
+        ? 'Impossible de publier l\'annonce. Réessayez.'
+        : 'Couldn\'t publish the listing. Please try again.';
   }
 
   /// Builds the listing from the form. [images] are the final image sources
@@ -279,7 +312,10 @@ class _CreateListingPageState extends State<CreateListingPage> {
                     onTap: () => Navigator.of(context).pop(),
                   ),
                   const Spacer(),
-                  Text('New listing', style: theme.textTheme.titleMedium),
+                  Text(
+                    context.copy('New listing', 'Nouvelle annonce'),
+                    style: theme.textTheme.titleMedium,
+                  ),
                   const Spacer(),
                   const SizedBox(width: 44),
                 ],
@@ -296,7 +332,7 @@ class _CreateListingPageState extends State<CreateListingPage> {
                 children: [
                   FadeSlideIn(
                     child: Text(
-                      'List your place',
+                      context.copy('List your place', 'Publiez votre logement'),
                       style: theme.textTheme.headlineMedium,
                     ),
                   ),
@@ -304,14 +340,18 @@ class _CreateListingPageState extends State<CreateListingPage> {
                   FadeSlideIn(
                     delay: const Duration(milliseconds: 40),
                     child: Text(
-                      'A few details and a cover — we wire the rooms into a '
-                      '3D walkthrough so seekers can tour before they visit.',
+                      context.copy(
+                        'A few details and a cover — we wire the rooms into a '
+                        '3D walkthrough so seekers can tour before they visit.',
+                        'Quelques détails et une couverture — nous assemblons '
+                        'les pièces en visite 3D pour explorer avant de venir.',
+                      ),
                       style: theme.textTheme.bodyMedium,
                     ),
                   ),
                   const SizedBox(height: AppSpacing.xl),
 
-                  _Label('Photos'),
+                  _Label(context.copy('Photos', 'Photos')),
                   const SizedBox(height: AppSpacing.sm),
                   _CoverPicker(
                     covers: _allCovers,
@@ -323,39 +363,52 @@ class _CreateListingPageState extends State<CreateListingPage> {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    'Import your own photos — they power the 3D tour. Tap one to '
-                    'set the cover.',
+                    context.copy(
+                      'Import your own photos — they power the 3D tour. Tap one to '
+                      'set the cover.',
+                      'Importez vos photos — elles alimentent la visite 3D. '
+                      'Touchez-en une pour définir la couverture.',
+                    ),
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: AppColors.secondaryLabel,
                     ),
                   ),
                   const SizedBox(height: AppSpacing.xl),
 
-                  _Label('The basics'),
+                  _Label(context.copy('The basics', 'Les bases')),
                   const SizedBox(height: AppSpacing.sm),
                   NeuField(
                     controller: _title,
-                    placeholder: 'Title — e.g. Bright T3 near Lac 2',
+                    placeholder: context.copy(
+                      'Title — e.g. Bright T3 near Lac 2',
+                      'Titre — ex. T3 lumineux près du Lac 2',
+                    ),
                     icon: Icons.title_rounded,
                     textInputAction: TextInputAction.next,
                   ),
                   const SizedBox(height: AppSpacing.md),
                   NeuField(
                     controller: _city,
-                    placeholder: 'City or area — e.g. Tunis, Lac 2',
+                    placeholder: context.copy(
+                      'City or area — e.g. Tunis, Lac 2',
+                      'Ville ou zone — ex. Tunis, Lac 2',
+                    ),
                     icon: Icons.place_outlined,
                     textInputAction: TextInputAction.next,
                   ),
                   const SizedBox(height: AppSpacing.md),
                   NeuField(
                     controller: _address,
-                    placeholder: 'Street address (optional)',
+                    placeholder: context.copy(
+                      'Street address (optional)',
+                      'Adresse (facultatif)',
+                    ),
                     icon: Icons.signpost_outlined,
                     textInputAction: TextInputAction.next,
                   ),
                   const SizedBox(height: AppSpacing.xl),
 
-                  _Label('What are you listing?'),
+                  _Label(context.copy('What are you listing?', 'Que proposez-vous ?')),
                   const SizedBox(height: AppSpacing.sm),
                   _TypeSelector(
                     type: _type,
@@ -363,7 +416,7 @@ class _CreateListingPageState extends State<CreateListingPage> {
                   ),
                   const SizedBox(height: AppSpacing.xl),
 
-                  _Label('Rental term'),
+                  _Label(context.copy('Rental term', 'Durée de location')),
                   const SizedBox(height: AppSpacing.sm),
                   Row(
                     children: [
@@ -389,7 +442,7 @@ class _CreateListingPageState extends State<CreateListingPage> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    t.label,
+                                    t.labelFor(context.isFrench),
                                     style: TextStyle(
                                       fontWeight: FontWeight.w800,
                                       color: _term == t
@@ -399,7 +452,7 @@ class _CreateListingPageState extends State<CreateListingPage> {
                                   ),
                                   const SizedBox(height: 2),
                                   Text(
-                                    t.blurb,
+                                    t.blurbFor(context.isFrench),
                                     style: TextStyle(
                                       fontSize: 11,
                                       color: _term == t
@@ -419,7 +472,7 @@ class _CreateListingPageState extends State<CreateListingPage> {
                   ),
                   const SizedBox(height: AppSpacing.xl),
 
-                  _Label('Suitable for'),
+                  _Label(context.copy('Suitable for', 'Convient pour')),
                   const SizedBox(height: AppSpacing.sm),
                   Wrap(
                     spacing: AppSpacing.sm,
@@ -432,7 +485,7 @@ class _CreateListingPageState extends State<CreateListingPage> {
                         'pets',
                       ])
                         _SelectChip(
-                          label: '${a[0].toUpperCase()}${a.substring(1)}',
+                          label: _audienceLabel(context, a),
                           selected: _audience.contains(a),
                           onTap: () => setState(() {
                             _audience.contains(a)
@@ -444,32 +497,35 @@ class _CreateListingPageState extends State<CreateListingPage> {
                   ),
                   const SizedBox(height: AppSpacing.xl),
 
-                  _Label('Price & size'),
+                  _Label(context.copy('Price & size', 'Prix & surface')),
                   const SizedBox(height: AppSpacing.sm),
                   NeuField(
                     controller: _price,
-                    placeholder: 'Monthly price in DT',
+                    placeholder: context.copy(
+                      'Monthly price in DT',
+                      'Prix mensuel en DT',
+                    ),
                     icon: Icons.payments_outlined,
                     keyboardType: TextInputType.number,
                     textInputAction: TextInputAction.next,
                   ),
                   const SizedBox(height: AppSpacing.md),
                   _Stepper(
-                    label: 'Bedrooms',
+                    label: context.copy('Bedrooms', 'Chambres'),
                     value: _bedrooms,
                     min: 0,
                     onChanged: (v) => setState(() => _bedrooms = v),
                   ),
                   const SizedBox(height: AppSpacing.sm),
                   _Stepper(
-                    label: 'Bathrooms',
+                    label: context.copy('Bathrooms', 'Salles de bain'),
                     value: _bathrooms,
                     min: 1,
                     onChanged: (v) => setState(() => _bathrooms = v),
                   ),
                   const SizedBox(height: AppSpacing.sm),
                   _Stepper(
-                    label: 'Area (m²)',
+                    label: context.copy('Area (m²)', 'Surface (m²)'),
                     value: _area,
                     min: 8,
                     step: 5,
@@ -477,7 +533,7 @@ class _CreateListingPageState extends State<CreateListingPage> {
                   ),
                   const SizedBox(height: AppSpacing.xl),
 
-                  _Label('Amenities'),
+                  _Label(context.copy('Amenities', 'Équipements')),
                   const SizedBox(height: AppSpacing.sm),
                   Wrap(
                     spacing: AppSpacing.sm,
@@ -497,13 +553,14 @@ class _CreateListingPageState extends State<CreateListingPage> {
                   ),
                   const SizedBox(height: AppSpacing.xl),
 
-                  _Label('Description'),
+                  _Label(context.copy('Description', 'Description')),
                   const SizedBox(height: AppSpacing.sm),
                   NeuField(
                     controller: _description,
-                    placeholder:
-                        'Tell seekers what makes this place feel like '
-                        'home…',
+                    placeholder: context.copy(
+                      'Tell seekers what makes this place feel like home…',
+                      'Décrivez ce qui rend ce logement accueillant…',
+                    ),
                     icon: Icons.notes_rounded,
                     textInputAction: TextInputAction.newline,
                     keyboardType: TextInputType.multiline,
@@ -542,7 +599,7 @@ class _CreateListingPageState extends State<CreateListingPage> {
                 AppSpacing.md,
               ),
               child: NeuButton(
-                label: 'Publish place',
+                label: context.copy('Publish place', 'Publier le logement'),
                 icon: Icons.check_rounded,
                 loading: _submitting,
                 onPressed: _publish,
@@ -554,6 +611,15 @@ class _CreateListingPageState extends State<CreateListingPage> {
     );
   }
 }
+
+/// Localized label for an audience id used by the "Suitable for" chips.
+String _audienceLabel(BuildContext context, String id) => switch (id) {
+  'adults' => context.copy('Adults', 'Adultes'),
+  'children' => context.copy('Children', 'Enfants'),
+  'baby' => context.copy('Baby', 'Bébé'),
+  'pets' => context.copy('Pets', 'Animaux'),
+  _ => id,
+};
 
 class _Label extends StatelessWidget {
   const _Label(this.text);

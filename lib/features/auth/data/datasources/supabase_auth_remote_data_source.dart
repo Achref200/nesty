@@ -1,6 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart' as sb;
 
 import '../../../../core/error/exceptions.dart';
+import '../../domain/entities/account_standing.dart';
 import '../../domain/entities/user_role.dart';
 import '../models/app_user_model.dart';
 import 'auth_remote_data_source.dart';
@@ -121,12 +122,16 @@ class SupabaseAuthRemoteDataSource implements AuthRemoteDataSource {
       // Offline or RLS hiccup — fall back to auth metadata below.
     }
     role ??= user.userMetadata?['role'] as String?;
+    final appMeta = user.appMetadata;
     return AppUserModel(
       id: user.id,
       email: user.email ?? '',
       fullName: fullName,
       avatarUrl: avatar,
       role: UserRoleX.fromId(role),
+      bannedUntil: _parseDate(appMeta['banned_until'] ?? appMeta['ban_until']),
+      banReason: appMeta['ban_reason'] as String?,
+      banType: appMeta['ban_type'] as String?,
     );
   }
 
@@ -169,5 +174,92 @@ class SupabaseAuthRemoteDataSource implements AuthRemoteDataSource {
       final user = data.session?.user;
       return user == null ? null : await _mapUser(user);
     });
+  }
+
+  @override
+  Future<AccountStanding> accountStatus() async {
+    if (_client.auth.currentUser == null) {
+      return const AccountStanding(AccountStandingKind.deleted);
+    }
+    try {
+      // Refresh the user from the server. This throws (or returns null) when
+      // the account was deleted or the token was revoked.
+      sb.User? user;
+      try {
+        final res = await _client.auth.getUser();
+        user = res.user;
+      } on sb.AuthException {
+        return const AccountStanding(AccountStandingKind.deleted);
+      }
+      if (user == null) {
+        return const AccountStanding(AccountStandingKind.deleted);
+      }
+
+      // A suspension applied by the admin console rides in app_metadata.
+      final metaStanding = _standingFromFlags(user.appMetadata);
+      if (metaStanding != null) return metaStanding;
+
+      // Fallback: the profiles table flags + a deletion check (row gone).
+      try {
+        final row = await _client
+            .from('profiles')
+            .select('status, banned_until, ban_reason, ban_type')
+            .eq('id', user.id)
+            .maybeSingle();
+        if (row == null) {
+          return const AccountStanding(AccountStandingKind.deleted);
+        }
+        final rowStanding = _standingFromFlags(row);
+        if (rowStanding != null) return rowStanding;
+      } catch (_) {
+        // Older schema / RLS — don't punish the user for a failed check.
+      }
+      return AccountStanding.active;
+    } catch (_) {
+      return AccountStanding.unknown;
+    }
+  }
+
+  @override
+  Future<void> deleteAccount() async {
+    try {
+      await _client.rpc('delete_own_account');
+      try {
+        await _client.auth.signOut();
+      } catch (_) {
+        // Session is already invalid post-deletion — local storage is cleared.
+      }
+    } on sb.PostgrestException catch (e) {
+      throw AuthException(e.message);
+    } on sb.AuthException catch (e) {
+      throw AuthException(e.message);
+    }
+  }
+
+  /// Reads a suspension/deletion from a flags map (app_metadata or a profiles
+  /// row). Returns null when the account is in good standing.
+  AccountStanding? _standingFromFlags(Map<String, dynamic> data) {
+    final status = (data['status'] as String?)?.toLowerCase();
+    if (status == 'deleted') {
+      return const AccountStanding(AccountStandingKind.deleted);
+    }
+    final until = _parseDate(data['banned_until'] ?? data['ban_until']);
+    final activeBan = until != null && until.isAfter(DateTime.now());
+    final flagged =
+        status == 'banned' || status == 'disabled' || status == 'suspended';
+    if (!activeBan && !flagged) return null;
+    final type = (data['ban_type'] as String?)?.toLowerCase();
+    final disabled = type == 'disable' || status == 'disabled';
+    return AccountStanding(
+      disabled ? AccountStandingKind.disabled : AccountStandingKind.banned,
+      reason: data['ban_reason'] as String?,
+      until: until,
+    );
+  }
+
+  static DateTime? _parseDate(Object? value) {
+    if (value is DateTime) return value;
+    if (value is String && value.isNotEmpty) return DateTime.tryParse(value);
+    return null;
   }
 }

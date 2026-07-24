@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../app/router/app_routes.dart';
 import '../../../../core/branding/app_icons.dart';
+import '../../../../core/localization/app_locale.dart';
 import '../../../../core/services/app_feedback.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
@@ -19,6 +20,7 @@ import '../../../../core/widgets/neu/neu_field.dart';
 import '../../../../core/widgets/neu/neu_icon_button.dart';
 import '../../../onboarding/presentation/widgets/spinning_cube.dart';
 import '../../domain/entities/user_role.dart';
+import '../auth_error.dart';
 import '../cubit/auth_cubit.dart';
 
 /// One adaptive auth surface for both sign-in and account creation.
@@ -77,20 +79,38 @@ class _AuthPageState extends State<AuthPage> {
   }
 
   String? _validate() {
-    if (_isCreate && _name.text.trim().isEmpty) return 'Enter your name.';
+    if (_isCreate && _name.text.trim().length < 2) {
+      return context.copy('Enter your name.', 'Saisissez votre nom.');
+    }
     final emailOk = RegExp(
       r'^[^@\s]+@[^@\s]+\.[^@\s]+$',
     ).hasMatch(_email.text.trim());
-    if (!emailOk) return 'Enter a valid email.';
+    if (!emailOk) {
+      return context.copy(
+        'Enter a valid email address.',
+        'Saisissez une adresse e-mail valide.',
+      );
+    }
     if (_isCreate) {
       if (_password.text.length < 8) {
-        return 'Use at least 8 characters.';
+        return context.copy(
+          'Use at least 8 characters.',
+          'Utilisez au moins 8 caractères.',
+        );
       }
       if (_passwordScore(_password.text) < 2) {
-        return 'Add a number or a capital letter to strengthen your password.';
+        return context.copy(
+          'Add a number or a capital letter to strengthen your password.',
+          'Ajoutez un chiffre ou une majuscule pour renforcer le mot de passe.',
+        );
       }
+    } else if (_password.text.isEmpty) {
+      return context.copy('Enter your password.', 'Saisissez votre mot de passe.');
     } else if (_password.text.length < 6) {
-      return 'Password needs 6+ characters.';
+      return context.copy(
+        'Password needs 6+ characters.',
+        'Le mot de passe doit comporter 6+ caractères.',
+      );
     }
     return null;
   }
@@ -117,12 +137,14 @@ class _AuthPageState extends State<AuthPage> {
     setState(() => _error = null);
     final cubit = context.read<AuthCubit>();
     if (_isCreate) {
-      cubit.signUp(
+      final err = await cubit.signUp(
         _name.text,
         _email.text,
         _password.text,
         widget.role ?? UserRole.seeker,
       );
+      if (!mounted || err == null) return; // success → the router takes over
+      _handleAuthError(err, creating: true);
     } else {
       // Role-scoped sign-in: an account can only enter its own space.
       final attempt = await cubit.signInScoped(
@@ -134,9 +156,170 @@ class _AuthPageState extends State<AuthPage> {
       if (attempt.roleMismatch) {
         _showRoleMismatch(attempt.actualRole);
       } else if (attempt.error != null) {
-        setState(() => _error = attempt.error);
+        _handleAuthError(attempt.error!, creating: false);
       }
     }
+  }
+
+  /// Turns a raw auth error into the right guidance: a dialog that switches the
+  /// user to the branch they actually need (sign in vs. create), a suspension
+  /// notice, or a clear inline message.
+  void _handleAuthError(String message, {required bool creating}) {
+    HapticFeedback.mediumImpact();
+    final kind = classifyAuthError(message);
+    switch (kind) {
+      case AuthErrorKind.alreadyRegistered:
+        _showAccountExists();
+        return;
+      case AuthErrorKind.noAccount:
+        if (!creating) {
+          _showNoAccount();
+          return;
+        }
+        break;
+      case AuthErrorKind.banned:
+        _showBanned();
+        return;
+      case AuthErrorKind.emailNotConfirmed:
+        _setError(context.copy(
+          'Please confirm your email first — check your inbox for the link.',
+          'Confirmez d\'abord votre e-mail — le lien est dans votre boîte.',
+        ));
+        return;
+      default:
+        break;
+    }
+    _setError(_friendly(message, kind));
+  }
+
+  void _setError(String message) {
+    setState(() => _error = message);
+    AppFeedback.errorToast(context, message);
+  }
+
+  /// A friendlier, localized message for the generic error kinds.
+  String _friendly(String raw, AuthErrorKind kind) {
+    switch (kind) {
+      case AuthErrorKind.wrongPassword:
+        return context.copy(
+          'That password doesn\'t look right. Try again or reset it.',
+          'Ce mot de passe semble incorrect. Réessayez ou réinitialisez-le.',
+        );
+      case AuthErrorKind.rateLimited:
+        return context.copy(
+          'Too many attempts. Please wait a moment and try again.',
+          'Trop de tentatives. Patientez un instant puis réessayez.',
+        );
+      case AuthErrorKind.network:
+        return context.copy(
+          'Network issue — check your connection and try again.',
+          'Problème réseau — vérifiez votre connexion et réessayez.',
+        );
+      default:
+        return raw;
+    }
+  }
+
+  /// Create tapped, but the email already has an account → offer to sign in.
+  void _showAccountExists() {
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        icon: const Icon(AppIcons.profile, color: AppColors.ink),
+        title: Text(context.copy(
+          'You already have an account',
+          'Vous avez déjà un compte',
+        )),
+        content: Text(context.copy(
+          'An account with this email already exists. Sign in instead?',
+          'Un compte existe déjà avec cet e-mail. Voulez-vous vous connecter ?',
+        )),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: Text(context.copy('Cancel', 'Annuler')),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.of(dialogContext).pop();
+              _password.clear();
+              _setMode(0); // switch to sign-in, keep the email
+            },
+            child: Text(context.copy('Sign in', 'Se connecter')),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Sign in tapped, but no account exists → offer to create one.
+  void _showNoAccount() {
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        icon: const Icon(AppIcons.mail, color: AppColors.ink),
+        title: Text(context.copy(
+          'No account found',
+          'Aucun compte trouvé',
+        )),
+        content: Text(
+          _agencyOnly
+              ? context.copy(
+                  'We couldn\'t sign you in. Agency accounts are created by '
+                      'Nesty — double-check your credentials or contact us.',
+                  'Connexion impossible. Les comptes agence sont créés par '
+                      'Nesty — vérifiez vos identifiants ou contactez-nous.',
+                )
+              : context.copy(
+                  'We couldn\'t find an account for this email, or the password '
+                      'was wrong. Create a new account?',
+                  'Aucun compte pour cet e-mail, ou mot de passe incorrect. '
+                      'Créer un nouveau compte ?',
+                ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: Text(context.copy('Cancel', 'Annuler')),
+          ),
+          if (!_agencyOnly)
+            FilledButton(
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+                _setMode(1); // switch to create, keep the email
+              },
+              child: Text(context.copy('Create account', 'Créer un compte')),
+            ),
+        ],
+      ),
+    );
+  }
+
+  /// A fresh sign-in was refused because the account is suspended. The reason
+  /// isn't available on this path (no session), so we keep it general.
+  void _showBanned() {
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        icon: const Icon(AppIcons.shield, color: AppColors.danger),
+        title: Text(context.copy(
+          'Account suspended',
+          'Compte suspendu',
+        )),
+        content: Text(context.copy(
+          'This account is suspended and can\'t sign in right now. '
+              'Contact support@nesty.tn if you think this is a mistake.',
+          'Ce compte est suspendu et ne peut pas se connecter pour le moment. '
+              'Contactez support@nesty.tn si vous pensez qu\'il s\'agit d\'une erreur.',
+        )),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: Text(context.copy('OK', 'OK')),
+          ),
+        ],
+      ),
+    );
   }
 
   /// Alerts the user that they knocked on the wrong door, and offers to jump
@@ -189,12 +372,13 @@ class _AuthPageState extends State<AuthPage> {
               return;
             }
             if (state.status == AuthStatus.authenticated) {
-              AppFeedback.successToast(context, 'Login successful.');
-            } else if (state.errorMessage != null &&
-                state.status == AuthStatus.unauthenticated) {
-              setState(() => _error = state.errorMessage);
-              AppFeedback.errorToast(context, state.errorMessage!);
+              AppFeedback.successToast(
+                context,
+                context.copy('Login successful.', 'Connexion réussie.'),
+              );
             }
+            // Sign-in / sign-up errors are handled inline by _submit with
+            // tailored guidance, so no generic error toast is shown here.
           },
           builder: (context, state) {
             return SingleChildScrollView(

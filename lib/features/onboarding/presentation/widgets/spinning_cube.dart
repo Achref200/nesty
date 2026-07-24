@@ -20,10 +20,15 @@ class SpinningCube extends StatefulWidget {
     this.size = 120,
     this.icon = Icons.view_in_ar_rounded,
     this.interactive = false,
+    this.child,
   });
 
   final double size;
   final IconData icon;
+
+  /// Rendered on the cube's front face instead of [icon] when provided — e.g.
+  /// the Nesty logo, so the brand itself turns in 3D.
+  final Widget? child;
 
   /// Lets the user drag to rotate the cube.
   final bool interactive;
@@ -129,7 +134,8 @@ class _SpinningCubeState extends State<SpinningCube>
           _face(
             Matrix4.identity()..translateByDouble(0, 0, h, 1),
             shade: 0.0,
-            child: Icon(widget.icon, color: AppColors.white, size: s * 0.34),
+            child: widget.child ??
+                Icon(widget.icon, color: AppColors.white, size: s * 0.34),
           ),
         ],
       ),

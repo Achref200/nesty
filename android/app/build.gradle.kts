@@ -11,6 +11,7 @@ android {
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
+        isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
@@ -44,6 +45,10 @@ flutter {
 }
 
 dependencies {
+    // flutter_local_notifications relies on java.time APIs -> core library
+    // desugaring is required for the app to build.
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
+
     // Several Flutter plugins (geolocator, image_picker) reference recent
     // androidx APIs. Force recent androidx versions app-wide so the classes
     // (androidx.core.location.*, androidx.activity.result.*,

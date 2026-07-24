@@ -1,21 +1,25 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/localization/app_locale.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/widgets/neu/neu_tappable.dart';
 
 class CategoryChip {
-  const CategoryChip(this.id, this.label, this.icon);
+  const CategoryChip(this.id, this.en, this.fr, this.icon);
   final String id;
-  final String label;
+  final String en;
+  final String fr;
   final IconData icon;
+
+  String label(bool french) => french ? fr : en;
 }
 
 const kCategories = <CategoryChip>[
-  CategoryChip('all', 'All', Icons.apps_rounded),
-  CategoryChip('entirePlace', 'Entire', Icons.home_rounded),
-  CategoryChip('sharedRoom', 'Colocation', Icons.groups_rounded),
-  CategoryChip('privateRoom', 'Private', Icons.meeting_room_rounded),
+  CategoryChip('all', 'All', 'Tout', Icons.apps_rounded),
+  CategoryChip('entirePlace', 'Entire', 'Entier', Icons.home_rounded),
+  CategoryChip('sharedRoom', 'Colocation', 'Colocation', Icons.groups_rounded),
+  CategoryChip('privateRoom', 'Private', 'Privé', Icons.meeting_room_rounded),
 ];
 
 /// Horizontal, single-select category filter.
@@ -59,7 +63,7 @@ class CategoryChips extends StatelessWidget {
                 ),
                 const SizedBox(width: 6),
                 Text(
-                  c.label,
+                  c.label(context.isFrench),
                   style: TextStyle(
                     fontWeight: FontWeight.w600,
                     color: active

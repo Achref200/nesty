@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../app/di/injection.dart';
 import '../../../../app/router/app_routes.dart';
 import '../../../../core/branding/app_icons.dart';
 import '../../../../core/localization/app_locale.dart';
@@ -14,6 +15,7 @@ import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/widgets/neu/neu_button.dart';
 import '../../../../core/widgets/neu/neu_surface.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
+import '../../../onboarding/data/profile_setup_store.dart';
 import '../../../profile/presentation/pages/profile_page.dart' show AboutSheet;
 
 /// Preferences hub — notification channels, language and account actions.
@@ -38,7 +40,9 @@ class _SettingsPageState extends State<SettingsPage> {
       'email': true,
       'reminders': true,
       'inbox': true,
-      'language': 'English',
+      // Default to the language currently in effect (which follows the device
+      // on first launch) until the member explicitly picks one.
+      'language': AppLocale.instance.label,
       ...?LocalStore.instance.getJson(_key),
     };
   }
@@ -189,13 +193,77 @@ class _SettingsPageState extends State<SettingsPage> {
             title: context.copy('App version', 'Version de l’application'),
             trailing: '1.0.0',
           ),
+          const SizedBox(height: AppSpacing.xl),
+
+          _SectionLabel(context.copy('Account', 'Compte')),
+          const SizedBox(height: AppSpacing.sm),
+          _NavTile(
+            icon: AppIcons.trash,
+            title: context.copy('Delete account', 'Supprimer le compte'),
+            danger: true,
+            onTap: () => _confirmDeleteAccount(context),
+          ),
           const SizedBox(height: AppSpacing.xxl),
 
           NeuButton(
             label: context.copy('Sign out', 'Se déconnecter'),
             filled: false,
             icon: AppIcons.signOut,
-            onPressed: () => context.read<AuthCubit>().signOut(),
+            onPressed: () {
+              sl<ProfileSetupStore>().reset();
+              context.read<AuthCubit>().signOut();
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Confirms and performs permanent account deletion. On success the session
+  /// ends and the router returns to the welcome flow.
+  void _confirmDeleteAccount(BuildContext context) {
+    final cubit = context.read<AuthCubit>();
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        icon: const Icon(AppIcons.trash, color: AppColors.danger),
+        title: Text(context.copy(
+          'Delete your account?',
+          'Supprimer votre compte ?',
+        )),
+        content: Text(context.copy(
+          'This permanently removes your account, your listings, reservations '
+              'and saved homes. This can\'t be undone.',
+          'Ceci supprime définitivement votre compte, vos annonces, vos '
+              'réservations et vos favoris. Cette action est irréversible.',
+        )),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: Text(context.copy('Cancel', 'Annuler')),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.danger,
+              foregroundColor: AppColors.onAccent,
+            ),
+            onPressed: () async {
+              Navigator.of(dialogContext).pop();
+              final error = await cubit.deleteAccount();
+              if (!context.mounted) return;
+              if (error != null) {
+                AppFeedback.errorToast(context, error);
+              } else {
+                AppFeedback.success(
+                  context,
+                  context.copy(
+                    'Your account has been deleted.',
+                    'Votre compte a été supprimé.',
+                  ),
+                );
+              }
+            },
+            child: Text(context.copy('Delete', 'Supprimer')),
           ),
         ],
       ),
@@ -203,7 +271,7 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   void _pickLanguage() {
-    const options = ['English', 'Français', 'العربية'];
+    const options = ['English', 'Français'];
     showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
@@ -315,26 +383,29 @@ class _NavTile extends StatelessWidget {
     required this.title,
     this.trailing,
     this.onTap,
+    this.danger = false,
   });
 
   final IconData icon;
   final String title;
   final String? trailing;
   final VoidCallback? onTap;
+  final bool danger;
 
   @override
   Widget build(BuildContext context) {
+    final color = danger ? AppColors.danger : AppColors.ink;
     return NeuSurface(
       borderRadius: AppRadius.md,
       padding: EdgeInsets.zero,
       child: ListTile(
         onTap: onTap,
-        leading: Icon(icon, size: 20, color: AppColors.ink),
+        leading: Icon(icon, size: 20, color: color),
         title: Text(
           title,
-          style: const TextStyle(
-            fontWeight: FontWeight.w600,
-            color: AppColors.ink,
+          style: TextStyle(
+            fontWeight: danger ? FontWeight.w700 : FontWeight.w600,
+            color: color,
           ),
         ),
         trailing: Row(
@@ -346,9 +417,11 @@ class _NavTile extends StatelessWidget {
                 style: const TextStyle(color: AppColors.secondaryLabel),
               ),
             const SizedBox(width: 4),
-            const Icon(
+            Icon(
               Icons.chevron_right_rounded,
-              color: AppColors.tertiaryLabel,
+              color: danger
+                  ? AppColors.danger.withValues(alpha: 0.6)
+                  : AppColors.tertiaryLabel,
             ),
           ],
         ),

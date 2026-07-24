@@ -15,6 +15,45 @@ class ListingFilter {
     this.checkOut,
   });
 
+  /// Builds a starting filter from the member's onboarding answers so discovery
+  /// opens already tuned to their preferences. Inputs are the stable
+  /// profile-setup ids (see `SetupCatalog`); every one is optional. Kept
+  /// deliberately gentle (budget, destination, term, capacity) so the default
+  /// feed stays useful rather than over-filtered.
+  factory ListingFilter.fromPreferences({
+    String? region,
+    String? budgetId,
+    String? purposeId,
+    String? householdId,
+  }) {
+    final term = switch (purposeId) {
+      'long_term' => RentalTerm.longTerm,
+      'seasonal' => RentalTerm.shortTerm,
+      _ => null,
+    };
+    final maxPrice = switch (budgetId) {
+      'lt500' => 500.0,
+      '500_1000' => 1000.0,
+      '1000_2000' => 2000.0,
+      _ => null,
+    };
+    final guests = switch (householdId) {
+      'couple' => 2,
+      'family' => 4,
+      'group' => 5,
+      _ => null,
+    };
+    final city = (region != null && region.trim().isNotEmpty)
+        ? region.trim()
+        : null;
+    return ListingFilter(
+      city: city,
+      rentalTerm: term,
+      maxPrice: maxPrice,
+      guests: guests,
+    );
+  }
+
   /// Destination / city text ("La Marsa", "Sousse"...). Null = anywhere.
   final String? city;
 

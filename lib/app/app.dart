@@ -24,16 +24,24 @@ class NestlyApp extends StatefulWidget {
 class _NestlyAppState extends State<NestlyApp> {
   late final AuthCubit _authCubit;
   late final GoRouter router;
+  late final _AppLifecycleObserver _lifecycle;
 
   @override
   void initState() {
     super.initState();
     _authCubit = sl<AuthCubit>()..checkSession();
     router = createRouter(_authCubit);
+    // Re-verify the account is still allowed in every time the app comes back
+    // to the foreground — a ban or deletion then takes effect immediately.
+    _lifecycle = _AppLifecycleObserver(
+      onResume: () => _authCubit.verifyStillActive(),
+    );
+    WidgetsBinding.instance.addObserver(_lifecycle);
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(_lifecycle);
     _authCubit.close();
     super.dispose();
   }
@@ -63,5 +71,17 @@ class _NestlyAppState extends State<NestlyApp> {
         ),
       ),
     );
+  }
+}
+
+/// Bridges Flutter's app lifecycle to a resume callback so the app can re-check
+/// account standing whenever it returns to the foreground.
+class _AppLifecycleObserver extends WidgetsBindingObserver {
+  _AppLifecycleObserver({required this.onResume});
+  final VoidCallback onResume;
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) onResume();
   }
 }

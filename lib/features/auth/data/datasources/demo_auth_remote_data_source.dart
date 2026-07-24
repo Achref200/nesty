@@ -1,5 +1,6 @@
 import '../../../../core/error/exceptions.dart';
 import '../../../../core/services/local_store.dart';
+import '../../domain/entities/account_standing.dart';
 import '../../domain/entities/user_role.dart';
 import '../models/app_user_model.dart';
 import 'auth_remote_data_source.dart';
@@ -41,11 +42,17 @@ class DemoAuthRemoteDataSource implements AuthRemoteDataSource {
     final previousRole = _current?.email == email.trim()
         ? _current?.role ?? UserRole.seeker
         : UserRole.seeker;
+    // Demo simulation: an email containing 'banned' or 'disabled' comes back
+    // suspended so the blocked-account UX can be explored without a backend.
+    final ban = _simulatedBan(email);
     _current = AppUserModel(
       id: 'demo-${email.hashCode}',
       email: email,
       fullName: email.split('@').first,
       role: previousRole,
+      bannedUntil: ban?.until,
+      banReason: ban?.reason,
+      banType: ban?.type,
     );
     await _persist(_current);
     return _current!;
@@ -116,4 +123,51 @@ class DemoAuthRemoteDataSource implements AuthRemoteDataSource {
 
   @override
   Stream<AppUserModel?> authStateChanges() => const Stream.empty();
+
+  @override
+  Future<AccountStanding> accountStatus() async {
+    await _fakeLatency();
+    final user = _current;
+    if (user == null) {
+      return const AccountStanding(AccountStandingKind.deleted);
+    }
+    final email = user.email.toLowerCase();
+    if (email.contains('deleted')) {
+      return const AccountStanding(AccountStandingKind.deleted);
+    }
+    final ban = _simulatedBan(email);
+    if (ban != null) {
+      return AccountStanding(
+        ban.type == 'disable'
+            ? AccountStandingKind.disabled
+            : AccountStandingKind.banned,
+        reason: ban.reason,
+        until: ban.until,
+      );
+    }
+    return AccountStanding.active;
+  }
+
+  @override
+  Future<void> deleteAccount() async {
+    await _fakeLatency();
+    _current = null;
+    await _persist(null);
+  }
+
+  /// Demo-only: derive a simulated suspension from magic words in the email
+  /// ('banned' → sanction, 'disabled' → paused contract).
+  ({DateTime until, String reason, String type})? _simulatedBan(String email) {
+    final e = email.toLowerCase();
+    final disabled = e.contains('disabled');
+    final banned = e.contains('banned');
+    if (!disabled && !banned) return null;
+    return (
+      until: DateTime.now().add(const Duration(days: 20)),
+      reason: disabled
+          ? 'Your host contract is paused (demo simulation).'
+          : 'Repeated policy violations (demo simulation).',
+      type: disabled ? 'disable' : 'ban',
+    );
+  }
 }

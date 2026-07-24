@@ -4,11 +4,14 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../app/di/injection.dart';
 import '../../../../core/branding/app_icons.dart';
+import '../../../../core/localization/app_locale.dart';
+import '../../../../core/services/push_service.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../assistant/presentation/widgets/assistant_launcher.dart';
 import '../../../auth/domain/entities/user_role.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
 import '../../../listings/data/datasources/host_listings_store.dart';
+import '../../../listings/presentation/cubit/listing_filter.dart';
 import '../../../listings/presentation/cubit/listings_cubit.dart';
 import '../../../listings/presentation/pages/create_listing_page.dart';
 import '../../../listings/presentation/pages/home_page.dart';
@@ -16,6 +19,8 @@ import '../../../listings/presentation/pages/host_dashboard_page.dart';
 import '../../../listings/presentation/pages/my_listings_page.dart';
 import '../../../../core/widgets/ios/liquid_glass.dart';
 import '../../../notifications/data/notifications_store.dart';
+import '../../../onboarding/data/profile_setup_store.dart';
+import '../../../onboarding/presentation/pages/profile_setup_flow_page.dart';
 import '../../../profile/presentation/pages/profile_page.dart';
 import '../../../settings/presentation/pages/settings_page.dart';
 import '../../../partner/presentation/pages/partner_home_page.dart';
@@ -41,18 +46,70 @@ class HomeShell extends StatefulWidget {
 class _HomeShellState extends State<HomeShell> {
   int _index = 0;
 
+  /// Owned here (rather than created inline by the provider) so discovery can
+  /// be seeded with the member's onboarding preferences once they're loaded.
+  late final ListingsCubit _listings = sl<ListingsCubit>();
+
   @override
   void initState() {
     super.initState();
+    // Load the discovery feed straight away for a prompt first paint.
+    _listings.load();
     // Pull the signed-in user's reservations (guest or host) from the backend.
     sl<ReservationsStore>().load();
     // Load & live-subscribe to the notification center.
     sl<NotificationsStore>().load();
+    // Ask for the OS notification permission now the member is inside the app.
+    PushService.requestPermission();
     // Load the one-time identity-verification state.
     sl<VerificationStore>().load();
     // Load the Partner subscription, then enforce the rule that a Partner must
     // hold an active plan — otherwise they revert to a simple seeker.
-    WidgetsBinding.instance.addPostFrameCallback((_) => _syncPartnerAccess());
+    WidgetsBinding.instance.addPostFrameCallback((_) => _onFirstFrame());
+  }
+
+  @override
+  void dispose() {
+    _listings.close();
+    super.dispose();
+  }
+
+  Future<void> _onFirstFrame() async {
+    await _syncPartnerAccess();
+    await _maybePromptProfileSetup();
+    await _applyDiscoveryPreferences();
+  }
+
+  /// Shows the light "tell us about you" questions once, on a member's first
+  /// run. Agencies are provisioned by Nesty, so they're never asked.
+  Future<void> _maybePromptProfileSetup() async {
+    if (!mounted) return;
+    final role = context.read<AuthCubit>().state.user?.role ?? UserRole.seeker;
+    if (role == UserRole.host) return;
+    await sl<ProfileSetupStore>().load();
+    if (!mounted || !sl<ProfileSetupStore>().shouldPrompt) return;
+    await startProfileSetupFlow(context);
+  }
+
+  /// Seeds the seeker's feed with filters derived from their onboarding answers
+  /// — budget, destination, rental term and household — so discovery opens
+  /// already tuned to them. Colocation seekers also land on the shared-room
+  /// category. They can still change or clear everything from the search bar.
+  Future<void> _applyDiscoveryPreferences() async {
+    if (!mounted) return;
+    final role = context.read<AuthCubit>().state.user?.role ?? UserRole.seeker;
+    if (role != UserRole.seeker) return;
+    final prefs = sl<ProfileSetupStore>().value;
+    final filter = ListingFilter.fromPreferences(
+      region: prefs.regions.isNotEmpty ? prefs.regions.first : null,
+      budgetId: prefs.budget,
+      purposeId: prefs.purpose,
+      householdId: prefs.household,
+    );
+    final wantsColocation = prefs.purpose == 'colocation';
+    if (!filter.isActive && !wantsColocation) return;
+    if (filter.isActive) await _listings.applyFilter(filter);
+    if (wantsColocation) await _listings.selectCategory('sharedRoom');
   }
 
   Future<void> _syncPartnerAccess() async {
@@ -91,11 +148,15 @@ class _HomeShellState extends State<HomeShell> {
         MyListingsPage(),
         ProfilePage(),
       ];
-      tabs = const [
-        _TabItem(AppIcons.dashboard, AppIcons.dashboard, 'Dashboard'),
-        _TabItem(AppIcons.calendar, AppIcons.calendar, 'Calendar'),
-        _TabItem(AppIcons.listings, AppIcons.listings, 'Listings'),
-        _TabItem(AppIcons.profile, AppIcons.profile, 'Profile'),
+      tabs = [
+        _TabItem(AppIcons.dashboard, AppIcons.dashboard,
+            context.copy('Dashboard', 'Tableau')),
+        _TabItem(AppIcons.calendar, AppIcons.calendar,
+            context.copy('Calendar', 'Agenda')),
+        _TabItem(AppIcons.listings, AppIcons.listings,
+            context.copy('Listings', 'Annonces')),
+        _TabItem(AppIcons.profile, AppIcons.profile,
+            context.copy('Profile', 'Profil')),
       ];
     } else if (isPartner) {
       pages = const [
@@ -104,26 +165,34 @@ class _HomeShellState extends State<HomeShell> {
         HostCalendarPage(),
         ProfilePage(),
       ];
-      tabs = const [
-        _TabItem(AppIcons.partner, AppIcons.partner, 'Space'),
-        _TabItem(AppIcons.listings, AppIcons.listings, 'Listings'),
-        _TabItem(AppIcons.calendar, AppIcons.calendar, 'Calendar'),
-        _TabItem(AppIcons.profile, AppIcons.profile, 'Profile'),
+      tabs = [
+        _TabItem(AppIcons.partner, AppIcons.partner,
+            context.copy('Space', 'Espace')),
+        _TabItem(AppIcons.listings, AppIcons.listings,
+            context.copy('Listings', 'Annonces')),
+        _TabItem(AppIcons.calendar, AppIcons.calendar,
+            context.copy('Calendar', 'Agenda')),
+        _TabItem(AppIcons.profile, AppIcons.profile,
+            context.copy('Profile', 'Profil')),
       ];
     } else {
       pages = const [HomePage(), SavedPage(), MyTripsPage(), SettingsPage()];
-      tabs = const [
-        _TabItem(AppIcons.explore, AppIcons.explore, 'Explore'),
-        _TabItem(AppIcons.saved, AppIcons.saved, 'Saved'),
-        _TabItem(AppIcons.trips, AppIcons.trips, 'Trips'),
-        _TabItem(AppIcons.settings, AppIcons.settings, 'Settings'),
+      tabs = [
+        _TabItem(AppIcons.explore, AppIcons.explore,
+            context.copy('Explore', 'Explorer')),
+        _TabItem(AppIcons.saved, AppIcons.saved,
+            context.copy('Saved', 'Favoris')),
+        _TabItem(AppIcons.trips, AppIcons.trips,
+            context.copy('Trips', 'Voyages')),
+        _TabItem(AppIcons.settings, AppIcons.settings,
+            context.copy('Settings', 'Réglages')),
       ];
     }
 
     final bottomInset = MediaQuery.of(context).padding.bottom;
 
-    return BlocProvider(
-      create: (_) => sl<ListingsCubit>()..load(),
+    return BlocProvider.value(
+      value: _listings,
       child: Scaffold(
         extendBody: true,
         body: Stack(
@@ -137,15 +206,33 @@ class _HomeShellState extends State<HomeShell> {
                     'The user is browsing the Nestly app, currently on the '
                     '"${tabs[_index].label}" tab as a ${role.name}.',
                 suggestions: isHost || isPartner
-                    ? const [
-                        'Help me write a great listing description',
-                        'How should I price my place?',
-                        'Tips to get more bookings',
+                    ? [
+                        context.copy(
+                          'Help me write a great listing description',
+                          'Aide-moi à rédiger une belle annonce',
+                        ),
+                        context.copy(
+                          'How should I price my place?',
+                          'Comment fixer le prix de mon logement ?',
+                        ),
+                        context.copy(
+                          'Tips to get more bookings',
+                          'Astuces pour plus de réservations',
+                        ),
                       ]
-                    : const [
-                        'Find a place that fits my budget',
-                        'Which area in Tunisia suits me best?',
-                        'What should I check before I rent?',
+                    : [
+                        context.copy(
+                          'Find a place that fits my budget',
+                          'Trouver un logement dans mon budget',
+                        ),
+                        context.copy(
+                          'Which area in Tunisia suits me best?',
+                          'Quelle région de Tunisie me convient ?',
+                        ),
+                        context.copy(
+                          'What should I check before I rent?',
+                          'Que vérifier avant de louer ?',
+                        ),
                       ],
               ),
             ),

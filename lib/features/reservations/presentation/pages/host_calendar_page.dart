@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../app/di/injection.dart';
+import '../../../../core/localization/app_locale.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/widgets/ios/ios_sliver_scaffold.dart';
@@ -42,7 +43,7 @@ class _HostCalendarPageState extends State<HostCalendarPage> {
   Widget build(BuildContext context) {
     final store = sl<ReservationsStore>();
     return IosSliverScaffold(
-      title: 'Calendar',
+      title: context.copy('Calendar', 'Agenda'),
       slivers: [
         SliverToBoxAdapter(
           child: ListenableBuilder(

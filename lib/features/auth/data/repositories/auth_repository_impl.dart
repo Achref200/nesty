@@ -2,6 +2,7 @@ import 'package:dartz/dartz.dart';
 
 import '../../../../core/error/exceptions.dart';
 import '../../../../core/error/failures.dart';
+import '../../domain/entities/account_standing.dart';
 import '../../domain/entities/app_user.dart';
 import '../../domain/entities/user_role.dart';
 import '../../domain/repositories/auth_repository.dart';
@@ -64,6 +65,28 @@ class AuthRepositoryImpl implements AuthRepository {
     try {
       final user = await _remote.currentUser();
       return Right(user);
+    } catch (_) {
+      return const Left(UnexpectedFailure());
+    }
+  }
+
+  @override
+  Future<AccountStanding> accountStatus() async {
+    try {
+      return await _remote.accountStatus();
+    } catch (_) {
+      // Never lock a user out because the check itself failed.
+      return AccountStanding.unknown;
+    }
+  }
+
+  @override
+  Future<Either<Failure, Unit>> deleteAccount() async {
+    try {
+      await _remote.deleteAccount();
+      return const Right(unit);
+    } on AuthException catch (e) {
+      return Left(AuthFailure(e.message));
     } catch (_) {
       return const Left(UnexpectedFailure());
     }

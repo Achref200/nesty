@@ -4,6 +4,8 @@
     <uses-permission android:name="android.permission.INTERNET"/>
     <!-- Voice-to-text for the AI assistant. -->
     <uses-permission android:name="android.permission.RECORD_AUDIO"/>
+    <!-- Heads-up alerts for new reservation / visit / account notifications. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <application
         android:label="Nesty"
         android:name="${applicationName}"

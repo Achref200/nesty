@@ -7,6 +7,7 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../../../app/di/injection.dart';
 import '../../../../core/branding/app_icons.dart';
+import '../../../../core/localization/app_locale.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/widgets/motion/page_transitions.dart';
@@ -85,7 +86,10 @@ class _VerificationFlowState extends State<_VerificationFlow> {
       if (x != null) setState(() => onPicked(x.path));
     } catch (_) {
       if (mounted) {
-        setState(() => _error = "Couldn't open the camera or gallery.");
+        setState(() => _error = context.copy(
+          "Couldn't open the camera or gallery.",
+          "Impossible d'ouvrir l'appareil photo ou la galerie.",
+        ));
       }
     }
   }
@@ -94,31 +98,49 @@ class _VerificationFlowState extends State<_VerificationFlow> {
     switch (_step) {
       case 1:
         if (_docType == null) {
-          _fail('Choose which document you\u2019ll use.');
+          _fail(context.copy(
+            'Choose which document you\u2019ll use.',
+            'Choisissez le document à utiliser.',
+          ));
           return false;
         }
         if (_frontPath == null) {
-          _fail('Add a photo of your ${_docType!.label}.');
+          _fail(context.copy(
+            'Add a photo of your ${_docType!.label}.',
+            'Ajoutez une photo de votre ${_docType!.labelFor(true)}.',
+          ));
           return false;
         }
         if (_docType!.twoSided && _backPath == null) {
-          _fail('Add the back of your document too.');
+          _fail(context.copy(
+            'Add the back of your document too.',
+            'Ajoutez aussi le verso de votre document.',
+          ));
           return false;
         }
         return true;
       case 2:
         if (_selfiePath == null) {
-          _fail('Add a quick selfie so we can match it to your ID.');
+          _fail(context.copy(
+            'Add a quick selfie so we can match it to your ID.',
+            'Ajoutez un selfie pour le comparer à votre pièce.',
+          ));
           return false;
         }
         return true;
       case 3:
         if (_name.text.trim().length < 3) {
-          _fail('Enter your full legal name.');
+          _fail(context.copy(
+            'Enter your full legal name.',
+            'Saisissez votre nom légal complet.',
+          ));
           return false;
         }
         if (_phone.text.trim().length < 6) {
-          _fail('Enter a phone number we can reach you on.');
+          _fail(context.copy(
+            'Enter a phone number we can reach you on.',
+            'Saisissez un numéro où vous joindre.',
+          ));
           return false;
         }
         return true;
@@ -162,7 +184,10 @@ class _VerificationFlowState extends State<_VerificationFlow> {
       if (!mounted) return;
       setState(() {
         _submitting = false;
-        _error = "Couldn't send your verification. Please try again.";
+        _error = context.copy(
+          "Couldn't send your verification. Please try again.",
+          "Impossible d'envoyer votre vérification. Réessayez.",
+        );
       });
     }
   }
@@ -240,29 +265,45 @@ class _VerificationFlowState extends State<_VerificationFlow> {
           child: const Icon(AppIcons.shield, size: 28, color: AppColors.ink),
         ),
         const SizedBox(height: AppSpacing.lg),
-        Text('Verify your identity', style: theme.textTheme.headlineMedium),
+        Text(
+          context.copy('Verify your identity', 'Vérifiez votre identité'),
+          style: theme.textTheme.headlineMedium,
+        ),
         const SizedBox(height: AppSpacing.xs),
         Text(
-          'A quick one-time check — the same trust step you\u2019d do on Upwork '
-          'or with your bank. It takes about two minutes.',
+          context.copy(
+            'A quick one-time check — the same trust step you\u2019d do on Upwork '
+            'or with your bank. It takes about two minutes.',
+            'Une vérification rapide et unique — la même étape de confiance '
+            'que sur Upwork ou avec votre banque. Environ deux minutes.',
+          ),
           style: theme.textTheme.bodyMedium,
         ),
         const SizedBox(height: AppSpacing.xl),
-        const _BenefitRow(
+        _BenefitRow(
           icon: AppIcons.verified,
-          title: 'A verified badge',
-          subtitle:
-              'Show agencies and owners you\u2019re a real, trusted member.',
+          title: context.copy('A verified badge', 'Un badge vérifié'),
+          subtitle: context.copy(
+            'Show agencies and owners you\u2019re a real, trusted member.',
+            'Montrez aux agences et propriétaires que vous êtes un membre '
+            'réel et fiable.',
+          ),
         ),
-        const _BenefitRow(
+        _BenefitRow(
           icon: AppIcons.trending,
-          title: 'Faster replies',
-          subtitle: 'Verified requests are prioritised by agencies.',
+          title: context.copy('Faster replies', 'Réponses plus rapides'),
+          subtitle: context.copy(
+            'Verified requests are prioritised by agencies.',
+            'Les demandes vérifiées sont prioritaires pour les agences.',
+          ),
         ),
-        const _BenefitRow(
+        _BenefitRow(
           icon: AppIcons.lock,
-          title: 'Private & secure',
-          subtitle: 'Your documents are used only to confirm it\u2019s you.',
+          title: context.copy('Private & secure', 'Privé et sécurisé'),
+          subtitle: context.copy(
+            'Your documents are used only to confirm it\u2019s you.',
+            'Vos documents servent uniquement à confirmer votre identité.',
+          ),
           last: true,
         ),
       ],
@@ -275,15 +316,18 @@ class _VerificationFlowState extends State<_VerificationFlow> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Choose your document', style: theme.textTheme.headlineMedium),
+        Text(
+          context.copy('Choose your document', 'Choisissez votre document'),
+          style: theme.textTheme.headlineMedium,
+        ),
         const SizedBox(height: AppSpacing.xl),
         for (final t in IdDocumentType.values) ...[
           _TypeCard(
             icon: t == IdDocumentType.passport
                 ? AppIcons.document
                 : AppIcons.billing,
-            title: t.label,
-            subtitle: t.blurb,
+            title: t.labelFor(context.isFrench),
+            subtitle: t.blurbFor(context.isFrench),
             selected: _docType == t,
             onTap: () => setState(() {
               _docType = t;
@@ -294,17 +338,21 @@ class _VerificationFlowState extends State<_VerificationFlow> {
         ],
         if (_docType != null) ...[
           const SizedBox(height: AppSpacing.xs),
-          const _MiniLabel('Upload your document'),
+          _MiniLabel(
+            context.copy('Upload your document', 'Téléversez votre document'),
+          ),
           const SizedBox(height: AppSpacing.sm),
           _UploadTile(
-            label: _docType!.twoSided ? 'Front side' : 'Photo page',
+            label: _docType!.twoSided
+                ? context.copy('Front side', 'Recto')
+                : context.copy('Photo page', 'Page photo'),
             path: _frontPath,
             onTap: () => _pick(ImageSource.gallery, (p) => _frontPath = p),
           ),
           if (_docType!.twoSided) ...[
             const SizedBox(height: AppSpacing.sm),
             _UploadTile(
-              label: 'Back side',
+              label: context.copy('Back side', 'Verso'),
               path: _backPath,
               onTap: () => _pick(ImageSource.gallery, (p) => _backPath = p),
             ),
@@ -321,16 +369,23 @@ class _VerificationFlowState extends State<_VerificationFlow> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Add a selfie', style: theme.textTheme.headlineMedium),
+        Text(
+          context.copy('Add a selfie', 'Ajoutez un selfie'),
+          style: theme.textTheme.headlineMedium,
+        ),
         const SizedBox(height: AppSpacing.xs),
         Text(
-          'We match it to your document to confirm it\u2019s really you. '
-          'Good light, no hat or sunglasses.',
+          context.copy(
+            'We match it to your document to confirm it\u2019s really you. '
+            'Good light, no hat or sunglasses.',
+            'Nous le comparons à votre document pour confirmer votre identité. '
+            'Bonne lumière, sans chapeau ni lunettes de soleil.',
+          ),
           style: theme.textTheme.bodyMedium,
         ),
         const SizedBox(height: AppSpacing.xl),
         _UploadTile(
-          label: 'Take a selfie',
+          label: context.copy('Take a selfie', 'Prendre un selfie'),
           icon: AppIcons.camera,
           path: _selfiePath,
           tall: true,
@@ -340,7 +395,9 @@ class _VerificationFlowState extends State<_VerificationFlow> {
         TextButton.icon(
           onPressed: () => _pick(ImageSource.gallery, (p) => _selfiePath = p),
           icon: const Icon(AppIcons.image, size: 16),
-          label: const Text('Choose from gallery instead'),
+          label: Text(
+            context.copy('Choose from gallery instead', 'Choisir depuis la galerie'),
+          ),
         ),
         if (_error != null) _errorRow(_error!),
       ],
@@ -353,23 +410,29 @@ class _VerificationFlowState extends State<_VerificationFlow> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Your details', style: theme.textTheme.headlineMedium),
+        Text(
+          context.copy('Your details', 'Vos informations'),
+          style: theme.textTheme.headlineMedium,
+        ),
         const SizedBox(height: AppSpacing.xs),
         Text(
-          'Enter them exactly as they appear on your document.',
+          context.copy(
+            'Enter them exactly as they appear on your document.',
+            'Saisissez-les exactement comme sur votre document.',
+          ),
           style: theme.textTheme.bodyMedium,
         ),
         const SizedBox(height: AppSpacing.xl),
-        const _MiniLabel('Full legal name'),
+        _MiniLabel(context.copy('Full legal name', 'Nom légal complet')),
         const SizedBox(height: AppSpacing.sm),
         NeuField(
           controller: _name,
-          placeholder: 'e.g. Ahmed Ben Salah',
+          placeholder: context.copy('e.g. Ahmed Ben Salah', 'ex. Ahmed Ben Salah'),
           icon: AppIcons.profile,
           textCapitalization: TextCapitalization.words,
         ),
         const SizedBox(height: AppSpacing.lg),
-        const _MiniLabel('Phone number'),
+        _MiniLabel(context.copy('Phone number', 'Numéro de téléphone')),
         const SizedBox(height: AppSpacing.sm),
         NeuField(
           controller: _phone,
@@ -388,7 +451,10 @@ class _VerificationFlowState extends State<_VerificationFlow> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Review & submit', style: theme.textTheme.headlineMedium),
+        Text(
+          context.copy('Review & submit', 'Vérifier & envoyer'),
+          style: theme.textTheme.headlineMedium,
+        ),
         const SizedBox(height: AppSpacing.xl),
         Container(
           padding: const EdgeInsets.all(AppSpacing.lg),
@@ -401,25 +467,28 @@ class _VerificationFlowState extends State<_VerificationFlow> {
             children: [
               _ReviewRow(
                 icon: AppIcons.profile,
-                label: 'Name',
+                label: context.copy('Name', 'Nom'),
                 value: _name.text.trim(),
               ),
               _ReviewRow(
                 icon: AppIcons.phone,
-                label: 'Phone',
+                label: context.copy('Phone', 'Téléphone'),
                 value: _phone.text.trim(),
               ),
               _ReviewRow(
                 icon: AppIcons.document,
-                label: 'Document',
-                value: _docType?.label ?? '',
+                label: context.copy('Document', 'Document'),
+                value: _docType?.labelFor(context.isFrench) ?? '',
               ),
               _ReviewRow(
                 icon: AppIcons.check,
-                label: 'Uploaded',
+                label: context.copy('Uploaded', 'Téléversé'),
                 value: _docType != null && _docType!.twoSided
-                    ? 'ID (front & back) · Selfie'
-                    : 'Document · Selfie',
+                    ? context.copy(
+                        'ID (front & back) · Selfie',
+                        'Pièce (recto & verso) · Selfie',
+                      )
+                    : context.copy('Document · Selfie', 'Document · Selfie'),
                 last: true,
               ),
             ],
@@ -427,8 +496,12 @@ class _VerificationFlowState extends State<_VerificationFlow> {
         ),
         const SizedBox(height: AppSpacing.md),
         Text(
-          'Our team reviews submissions within 24–48h. We\u2019ll notify you the '
-          'moment your badge is ready.',
+          context.copy(
+            'Our team reviews submissions within 24–48h. We\u2019ll notify you the '
+            'moment your badge is ready.',
+            'Notre équipe examine les demandes sous 24–48h. Nous vous préviendrons '
+            'dès que votre badge est prêt.',
+          ),
           style: theme.textTheme.bodyMedium,
         ),
         if (_error != null) _errorRow(_error!),
@@ -466,21 +539,25 @@ class _VerificationFlowState extends State<_VerificationFlow> {
           ),
           const SizedBox(height: AppSpacing.xl),
           TypingText(
-            'You\u2019re all set.',
+            context.copy('You\u2019re all set.', 'Tout est prêt.'),
             textAlign: TextAlign.center,
             style: theme.textTheme.headlineMedium,
             startDelay: const Duration(milliseconds: 260),
           ),
           const SizedBox(height: AppSpacing.sm),
           Text(
-            'Your identity is under review. We\u2019ll add your verified badge '
-            'as soon as it\u2019s approved — usually within a day.',
+            context.copy(
+              'Your identity is under review. We\u2019ll add your verified badge '
+              'as soon as it\u2019s approved — usually within a day.',
+              'Votre identité est en cours d\u2019examen. Nous ajouterons votre '
+              'badge vérifié dès qu\u2019il est approuvé — souvent en un jour.',
+            ),
             textAlign: TextAlign.center,
             style: theme.textTheme.bodyMedium,
           ),
           const SizedBox(height: AppSpacing.xxl),
           NeuButton(
-            label: 'Done',
+            label: context.copy('Done', 'Terminé'),
             icon: AppIcons.check,
             onPressed: () => Navigator.of(context).pop(true),
           ),
@@ -504,8 +581,10 @@ class _VerificationFlowState extends State<_VerificationFlow> {
       ),
       child: NeuButton(
         label: _step == 0
-            ? 'Get started'
-            : (isReview ? 'Submit for review' : 'Continue'),
+            ? context.copy('Get started', 'Commencer')
+            : (isReview
+                  ? context.copy('Submit for review', 'Envoyer pour examen')
+                  : context.copy('Continue', 'Continuer')),
         icon: isReview ? AppIcons.check : AppIcons.forward,
         loading: isReview && _submitting,
         onPressed: () {

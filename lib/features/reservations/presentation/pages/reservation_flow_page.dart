@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../app/di/injection.dart';
 import '../../../../core/branding/app_icons.dart';
 import '../../../../core/format/money.dart';
+import '../../../../core/localization/app_locale.dart';
 import '../../../../core/services/analytics_service.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
@@ -222,7 +223,7 @@ class _ReservationFlowState extends State<_ReservationFlow> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('What would you like to do?',
+        Text(context.copy('What would you like to do?', 'Que souhaitez-vous faire ?'),
             style: Theme.of(context).textTheme.headlineMedium),
         const SizedBox(height: AppSpacing.xs),
         Text(widget.property.title,
@@ -230,17 +231,22 @@ class _ReservationFlowState extends State<_ReservationFlow> {
         const SizedBox(height: AppSpacing.xl),
         _TypeCard(
           icon: AppIcons.visit,
-          title: 'Book a visit',
-          subtitle:
-              'Schedule a viewing with the agency on a day that suits you.',
+          title: context.copy('Book a visit', 'Réserver une visite'),
+          subtitle: context.copy(
+            'Schedule a viewing with the agency on a day that suits you.',
+            'Planifiez une visite avec l\'agence au jour qui vous convient.',
+          ),
           selected: _type == ReservationType.visit,
           onTap: () => setState(() => _type = ReservationType.visit),
         ),
         const SizedBox(height: AppSpacing.md),
         _TypeCard(
           icon: AppIcons.stay,
-          title: 'Reserve dates',
-          subtitle: 'Hold your summer dates with a check-in and check-out.',
+          title: context.copy('Reserve dates', 'Réserver des dates'),
+          subtitle: context.copy(
+            'Hold your summer dates with a check-in and check-out.',
+            'Bloquez vos dates avec une arrivée et un départ.',
+          ),
           selected: _type == ReservationType.stay,
           onTap: () => setState(() => _type = ReservationType.stay),
         ),
@@ -255,18 +261,22 @@ class _ReservationFlowState extends State<_ReservationFlow> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          _type == ReservationType.visit ? 'When suits you?' : 'Which dates?',
+          _type == ReservationType.visit
+              ? context.copy('When suits you?', 'Quand vous convient ?')
+              : context.copy('Which dates?', 'Quelles dates ?'),
           style: theme.textTheme.headlineMedium,
         ),
         const SizedBox(height: AppSpacing.xl),
         if (_type == ReservationType.visit) ...[
           _PickerRow(
             icon: AppIcons.calendar,
-            label: _visitDay == null ? 'Choose a day' : _formatDate(_visitDay!),
+            label: _visitDay == null
+                ? context.copy('Choose a day', 'Choisir un jour')
+                : _formatDate(_visitDay!),
             onTap: _pickVisitDay,
           ),
           const SizedBox(height: AppSpacing.lg),
-          const _MiniLabel('Preferred time'),
+          _MiniLabel(context.copy('Preferred time', 'Heure préférée')),
           const SizedBox(height: AppSpacing.sm),
           Wrap(
             spacing: AppSpacing.sm,
@@ -284,7 +294,7 @@ class _ReservationFlowState extends State<_ReservationFlow> {
           _PickerRow(
             icon: AppIcons.stay,
             label: _range == null
-                ? 'Choose your dates'
+                ? context.copy('Choose your dates', 'Choisir vos dates')
                 : '${_formatDate(_range!.start)} → ${_formatDate(_range!.end)}',
             onTap: _pickRange,
           ),
@@ -303,7 +313,7 @@ class _ReservationFlowState extends State<_ReservationFlow> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('A few details',
+        Text(context.copy('A few details', 'Quelques détails'),
             style: Theme.of(context).textTheme.headlineMedium),
         const SizedBox(height: AppSpacing.xl),
         _GuestsStepper(
@@ -311,11 +321,17 @@ class _ReservationFlowState extends State<_ReservationFlow> {
           onChanged: (v) => setState(() => _guests = v),
         ),
         const SizedBox(height: AppSpacing.lg),
-        const _MiniLabel('Note for the agency (optional)'),
+        _MiniLabel(context.copy(
+          'Note for the agency (optional)',
+          'Note pour l\'agence (facultatif)',
+        )),
         const SizedBox(height: AppSpacing.sm),
         NeuField(
           controller: _note,
-          placeholder: 'Anything they should know…',
+          placeholder: context.copy(
+            'Anything they should know…',
+            'Ce qu\'ils devraient savoir…',
+          ),
           icon: AppIcons.send,
           keyboardType: TextInputType.multiline,
           textInputAction: TextInputAction.newline,
@@ -329,11 +345,12 @@ class _ReservationFlowState extends State<_ReservationFlow> {
     final theme = Theme.of(context);
     final when = _type == ReservationType.visit
         ? '${_formatDate(_visitDay!)} · $_slot'
-        : '${_formatDate(_range!.start)} → ${_formatDate(_range!.end)} · $_nights nights';
+        : '${_formatDate(_range!.start)} → ${_formatDate(_range!.end)} · $_nights ${context.copy('nights', 'nuits')}';
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Review your request', style: theme.textTheme.headlineMedium),
+        Text(context.copy('Review your request', 'Vérifiez votre demande'),
+            style: theme.textTheme.headlineMedium),
         const SizedBox(height: AppSpacing.xl),
         Container(
           padding: const EdgeInsets.all(AppSpacing.lg),
@@ -346,33 +363,35 @@ class _ReservationFlowState extends State<_ReservationFlow> {
             children: [
               _ReviewRow(
                 icon: AppIcons.location,
-                label: 'Home',
+                label: context.copy('Home', 'Logement'),
                 value: widget.property.title,
               ),
               _ReviewRow(
                 icon: _type == ReservationType.visit
                     ? AppIcons.visit
                     : AppIcons.stay,
-                label: _type == ReservationType.visit ? 'Visit' : 'Stay',
+                label: _type == ReservationType.visit
+                    ? context.copy('Visit', 'Visite')
+                    : context.copy('Stay', 'Séjour'),
                 value: when,
               ),
               _ReviewRow(
                 icon: AppIcons.guests,
-                label: 'Guests',
+                label: context.copy('Guests', 'Voyageurs'),
                 value: '$_guests',
               ),
               if (_type == ReservationType.stay)
                 _ReviewRow(
                   icon: AppIcons.star,
-                  label: 'Estimated total',
+                  label: context.copy('Estimated total', 'Total estimé'),
                   value: formatDinars(_total),
                   last: true,
                 )
               else
                 _ReviewRow(
                   icon: AppIcons.clock,
-                  label: 'Duration',
-                  value: '~45 min viewing',
+                  label: context.copy('Duration', 'Durée'),
+                  value: context.copy('~45 min viewing', 'visite ~45 min'),
                   last: true,
                 ),
             ],
@@ -380,8 +399,12 @@ class _ReservationFlowState extends State<_ReservationFlow> {
         ),
         const SizedBox(height: AppSpacing.md),
         Text(
-          'The agency reviews and confirms your request. You\'ll track its '
-          'status in Trips.',
+          context.copy(
+            'The agency reviews and confirms your request. You\'ll track its '
+                'status in Trips.',
+            'L\'agence examine et confirme votre demande. Suivez son statut '
+                'dans Voyages.',
+          ),
           style: theme.textTheme.bodyMedium,
         ),
         if (_error != null) _errorRow(_error!),
@@ -417,21 +440,24 @@ class _ReservationFlowState extends State<_ReservationFlow> {
           const SizedBox(height: AppSpacing.xl),
           TypingText(
             _type == ReservationType.visit
-                ? 'Your visit is requested.'
-                : 'Your dates are on hold.',
+                ? context.copy('Your visit is requested.', 'Votre visite est demandée.')
+                : context.copy('Your dates are on hold.', 'Vos dates sont réservées.'),
             textAlign: TextAlign.center,
             style: theme.textTheme.headlineMedium,
             startDelay: const Duration(milliseconds: 260),
           ),
           const SizedBox(height: AppSpacing.sm),
           Text(
-            'We\'ve sent it to the agency. Track the status any time in Trips.',
+            context.copy(
+              'We\'ve sent it to the agency. Track the status any time in Trips.',
+              'Nous l\'avons envoyée à l\'agence. Suivez le statut dans Voyages.',
+            ),
             textAlign: TextAlign.center,
             style: theme.textTheme.bodyMedium,
           ),
           const SizedBox(height: AppSpacing.xxl),
           NeuButton(
-            label: 'View my trips',
+            label: context.copy('View my trips', 'Voir mes voyages'),
             icon: AppIcons.trips,
             onPressed: () => Navigator.of(context).pop(true),
           ),
@@ -454,7 +480,9 @@ class _ReservationFlowState extends State<_ReservationFlow> {
         border: Border(top: BorderSide(color: AppColors.separator, width: 0.5)),
       ),
       child: NeuButton(
-        label: isReview ? 'Confirm request' : 'Continue',
+        label: isReview
+            ? context.copy('Confirm request', 'Confirmer la demande')
+            : context.copy('Continue', 'Continuer'),
         icon: isReview ? AppIcons.check : AppIcons.forward,
         loading: isReview && _submitting,
         onPressed: () {
@@ -736,7 +764,7 @@ class _TotalRow extends StatelessWidget {
           Row(
             children: [
               Text(
-                '${formatDinars(nightly)} × $nights ${nights == 1 ? 'night' : 'nights'}',
+                '${formatDinars(nightly)} × $nights ${nights == 1 ? context.copy('night', 'nuit') : context.copy('nights', 'nuits')}',
                 style: const TextStyle(
                     color: AppColors.secondaryLabel, fontSize: 13),
               ),
@@ -749,8 +777,8 @@ class _TotalRow extends StatelessWidget {
           const Divider(height: AppSpacing.lg),
           Row(
             children: [
-              const Text('Estimated total',
-                  style: TextStyle(fontWeight: FontWeight.w700)),
+              Text(context.copy('Estimated total', 'Total estimé'),
+                  style: const TextStyle(fontWeight: FontWeight.w700)),
               const Spacer(),
               Text(formatDinars(total),
                   style: const TextStyle(
@@ -779,9 +807,9 @@ class _GuestsStepper extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const Expanded(
-            child:
-                Text('Guests', style: TextStyle(fontWeight: FontWeight.w600)),
+          Expanded(
+            child: Text(context.copy('Guests', 'Voyageurs'),
+                style: const TextStyle(fontWeight: FontWeight.w600)),
           ),
           _RoundBtn(
               icon: AppIcons.minus,

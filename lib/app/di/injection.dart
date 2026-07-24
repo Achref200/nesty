@@ -33,6 +33,7 @@ import '../../features/listings/domain/usecases/get_listings.dart';
 import '../../features/listings/presentation/cubit/listing_details_cubit.dart';
 import '../../features/listings/presentation/cubit/listings_cubit.dart';
 import '../../features/notifications/data/notifications_store.dart';
+import '../../features/onboarding/data/profile_setup_store.dart';
 import '../../features/reservations/data/reservations_store.dart';
 import '../../features/saved/presentation/cubit/saved_cubit.dart';
 import '../../features/subscription/data/subscription_store.dart';
@@ -104,6 +105,9 @@ Future<void> configureDependencies() async {
 
   // ---- Identity verification (one-time KYC) ----
   sl.registerLazySingleton(() => VerificationStore());
+
+  // ---- First-run profile setup (onboarding questions) ----
+  sl.registerLazySingleton(() => ProfileSetupStore());
 
   // ---- AI assistant (contextual, available everywhere) ----
   sl.registerLazySingleton(() => http.Client());

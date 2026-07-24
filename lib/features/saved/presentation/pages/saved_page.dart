@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../app/router/app_routes.dart';
+import '../../../../core/localization/app_locale.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/widgets/ios/ios_sliver_scaffold.dart';
@@ -29,7 +30,7 @@ class SavedPage extends StatelessWidget {
                 .toList();
 
             return IosSliverScaffold(
-              title: 'Saved',
+              title: context.copy('Saved', 'Favoris'),
               slivers: [
                 if (items.isEmpty)
                   const SliverFillRemaining(
@@ -47,8 +48,14 @@ class SavedPage extends StatelessWidget {
                       ),
                       child: Text(
                         items.length == 1
-                            ? '1 home you\'re keeping an eye on'
-                            : '${items.length} homes you\'re keeping an eye on',
+                            ? context.copy(
+                                '1 home you\'re keeping an eye on',
+                                '1 logement que vous suivez',
+                              )
+                            : context.copy(
+                                '${items.length} homes you\'re keeping an eye on',
+                                '${items.length} logements que vous suivez',
+                              ),
                         style: Theme.of(context).textTheme.bodyMedium,
                       ),
                     ),
@@ -123,7 +130,7 @@ class _EmptySaved extends StatelessWidget {
             FadeSlideIn(
               delay: const Duration(milliseconds: 90),
               child: Text(
-                'Nothing saved yet',
+                context.copy('Nothing saved yet', 'Aucun favori'),
                 style: theme.textTheme.titleMedium,
               ),
             ),
@@ -131,8 +138,12 @@ class _EmptySaved extends StatelessWidget {
             FadeSlideIn(
               delay: const Duration(milliseconds: 160),
               child: Text(
-                'Tap the heart on any home to keep it here — '
-                'your shortlist follows you between visits.',
+                context.copy(
+                  'Tap the heart on any home to keep it here — '
+                      'your shortlist follows you between visits.',
+                  'Touchez le cœur d\'un logement pour le garder ici — '
+                      'votre sélection vous suit entre les visites.',
+                ),
                 textAlign: TextAlign.center,
                 style: theme.textTheme.bodyMedium,
               ),

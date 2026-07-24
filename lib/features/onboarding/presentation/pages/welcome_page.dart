@@ -13,10 +13,10 @@ import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/widgets/motion/fade_slide_in.dart';
 import '../../../../core/widgets/motion/shimmer.dart';
 import '../../../../core/widgets/neu/neu_button.dart';
-import '../../../../core/widgets/neu/neu_surface.dart';
 import '../../../../core/widgets/neu/neu_tappable.dart';
 import '../../../auth/domain/entities/user_role.dart';
 import '../../../subscription/presentation/pages/paywall_page.dart';
+import '../widgets/feature_mocks.dart';
 import '../widgets/proximity_reveal.dart';
 import '../widgets/spinning_cube.dart';
 
@@ -207,13 +207,15 @@ class _VisionSlide extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     SpinningCube(
-                      size: 132,
-                      icon: AppIcons.tour3d,
+                      size: 150,
                       interactive: true,
+                      child: const NestlyLogo(
+                        size: 62,
+                        color: AppColors.white,
+                        progress: 1,
+                      ),
                     ),
                     const SizedBox(height: AppSpacing.lg),
-                    const _AnimatedNestyMark(),
-                    const SizedBox(height: AppSpacing.md),
                     const _DragHint(),
                   ],
                 ),
@@ -260,37 +262,6 @@ class _VisionSlide extends StatelessWidget {
       ),
     );
   }
-}
-
-class _AnimatedNestyMark extends StatefulWidget {
-  const _AnimatedNestyMark();
-
-  @override
-  State<_AnimatedNestyMark> createState() => _AnimatedNestyMarkState();
-}
-
-class _AnimatedNestyMarkState extends State<_AnimatedNestyMark>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 1800),
-  )..repeat(reverse: true);
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => AnimatedBuilder(
-    animation: _controller,
-    builder: (context, child) => Transform.scale(
-      scale: 0.92 + _controller.value * 0.08,
-      child: Opacity(opacity: 0.72 + _controller.value * 0.28, child: child),
-    ),
-    child: const NestlyLogo(size: 54, color: AppColors.accent, progress: 1),
-  );
 }
 
 /// A subtle, pulsing "drag me" affordance shown under the interactive cube.
@@ -503,6 +474,7 @@ class _ProximitySlideState extends State<_ProximitySlide> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final display = theme.textTheme.displayLarge!;
     final opacity = (1 - widget.delta.abs()).clamp(0.0, 1.0);
     final width = MediaQuery.of(context).size.width;
 
@@ -519,7 +491,10 @@ class _ProximitySlideState extends State<_ProximitySlide> {
                   const Spacer(flex: 1),
                   FadeSlideIn(
                     child: Text(
-                      'We\'re so close to you!',
+                      context.copy(
+                        'We\'re so close to you!',
+                        'On est tout près de vous !',
+                      ),
                       style: theme.textTheme.headlineMedium,
                       textAlign: TextAlign.center,
                     ),
@@ -528,7 +503,10 @@ class _ProximitySlideState extends State<_ProximitySlide> {
                   FadeSlideIn(
                     delay: const Duration(milliseconds: 120),
                     child: Text(
-                      '12 homes and 4 agencies right around your corner.',
+                      context.copy(
+                        '12 homes and 4 agencies right around your corner.',
+                        '12 logements et 4 agences juste à côté de vous.',
+                      ),
                       style: theme.textTheme.bodyMedium,
                       textAlign: TextAlign.center,
                     ),
@@ -543,20 +521,36 @@ class _ProximitySlideState extends State<_ProximitySlide> {
                   Center(child: _LocatingScene(active: _loading)),
                   const Spacer(flex: 1),
                   Text(
-                    'Homes, right\naround you.',
-                    style: theme.textTheme.displayLarge,
+                    context.copy('Homes, right', 'Des logements,'),
+                    style: display,
+                  ),
+                  SizedBox(
+                    height: display.fontSize! * (display.height ?? 1.1) + 6,
+                    child: _TypewriterCycle(
+                      words: context.isFrench
+                          ? const ['tout près.', 'à côté.', 'juste là.']
+                          : const ['around you.', 'near you.', 'next door.'],
+                      style: display,
+                    ),
                   ),
                   const SizedBox(height: AppSpacing.md),
                   Text(
-                    'Share your location and Nesty surfaces the places and '
-                    'agencies closest to you first — in 3D.',
+                    context.copy(
+                      'Share your location and Nesty surfaces the places and '
+                      'agencies closest to you first — in 3D.',
+                      'Partagez votre position : Nesty fait remonter les '
+                      'logements et agences les plus proches — en 3D.',
+                    ),
                     style: theme.textTheme.bodyLarge?.copyWith(
                       color: AppColors.textSecondary,
                     ),
                   ),
                   const SizedBox(height: AppSpacing.xxl),
                   NeuButton(
-                    label: 'Show what\'s nearby',
+                    label: context.copy(
+                      'Show what\'s nearby',
+                      'Voir ce qui est proche',
+                    ),
                     icon: AppIcons.location,
                     loading: _loading,
                     onPressed: _locate,
@@ -652,36 +646,30 @@ class _ShowcaseSlide extends StatefulWidget {
 class _ShowcaseSlideState extends State<_ShowcaseSlide> {
   int _i = 0;
   Timer? _timer;
-
-  static const _reels = [
-    _Reel(
-      icon: AppIcons.seeker,
-      role: 'Seeker',
-      headline: 'Find & tour in 3D',
-      features: ['Immersive 3D tours', 'Book a visit', 'Save homes'],
-    ),
-    _Reel(
-      icon: AppIcons.partner,
-      role: 'Partner',
-      headline: 'Earn from your network',
-      features: ['List homes', 'Manage requests', 'Your own space'],
-    ),
-    _Reel(
-      icon: AppIcons.agency,
-      role: 'Agency',
-      headline: 'Manage at scale',
-      features: ['Publish listings', 'Track bookings', 'Insights'],
-    ),
-  ];
+  static const _count = 4;
 
   @override
   void initState() {
     super.initState();
-    _timer = Timer.periodic(const Duration(milliseconds: 2600), (_) {
+    _timer = Timer.periodic(const Duration(milliseconds: 3200), (_) {
       if (!mounted) return;
-      setState(() => _i = (_i + 1) % _reels.length);
+      setState(() => _i = (_i + 1) % _count);
     });
   }
+
+  String _label(BuildContext context, int i) => switch (i) {
+    0 => context.copy('Reserve a stay', 'Réservez un séjour'),
+    1 => context.copy('Prepare your trip', 'Préparez votre voyage'),
+    2 => context.copy('Tour in 3D', 'Visitez en 3D'),
+    _ => context.copy('Discover nearby', 'Explorez autour'),
+  };
+
+  Widget _mock(int i) => switch (i) {
+    0 => const ReserveMock(),
+    1 => const TripPrepMock(),
+    2 => const Tour3dMock(),
+    _ => const NearbyMock(),
+  };
 
   @override
   void dispose() {
@@ -693,7 +681,6 @@ class _ShowcaseSlideState extends State<_ShowcaseSlide> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final opacity = (1 - widget.delta.abs()).clamp(0.0, 1.0);
-    final reel = _reels[_i];
 
     return Opacity(
       opacity: opacity,
@@ -702,12 +689,24 @@ class _ShowcaseSlideState extends State<_ShowcaseSlide> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SizedBox(height: AppSpacing.xl),
-            Text('One app,', style: theme.textTheme.displayLarge),
-            Text('three ways in.', style: theme.textTheme.displayLarge),
+            const SizedBox(height: AppSpacing.lg),
+            Text(
+              context.copy('One app,', 'Une seule app,'),
+              style: theme.textTheme.displayLarge,
+            ),
+            Text(
+              context.copy(
+                'everything you need.',
+                'tout ce qu\'il vous faut.',
+              ),
+              style: theme.textTheme.displayLarge,
+            ),
             const SizedBox(height: AppSpacing.sm),
             Text(
-              'A quick look at what Nesty does — and who it\'s for.',
+              context.copy(
+                'Reserve, prepare, tour in 3D and discover what\'s near you.',
+                'Réservez, préparez, visitez en 3D et explorez autour de vous.',
+              ),
               style: theme.textTheme.bodyLarge?.copyWith(
                 color: AppColors.textSecondary,
               ),
@@ -716,54 +715,47 @@ class _ShowcaseSlideState extends State<_ShowcaseSlide> {
               child: Center(
                 child: FittedBox(
                   fit: BoxFit.contain,
-                  child: SizedBox(
-                    width: 240,
-                    height: 452,
-                    child: Stack(
-                      clipBehavior: Clip.none,
-                      children: [
-                        // Device sits at the bottom, centred.
-                        const Align(
-                          alignment: Alignment.bottomCenter,
-                          child: _PhoneFrame(),
+                  child: PhoneFrame(
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 480),
+                      transitionBuilder: (child, animation) => FadeTransition(
+                        opacity: animation,
+                        child: SlideTransition(
+                          position: Tween<Offset>(
+                            begin: const Offset(0, 0.06),
+                            end: Offset.zero,
+                          ).animate(animation),
+                          child: child,
                         ),
-                        // The "3 ways" card floats over the phone's top edge,
-                        // centred so the overhang is symmetric on both sides.
-                        Align(
-                          alignment: Alignment.topCenter,
-                          child: SizedBox(
-                            width: 200,
-                            child: AnimatedSwitcher(
-                              duration: const Duration(milliseconds: 450),
-                              transitionBuilder: (child, animation) =>
-                                  FadeTransition(
-                                    opacity: animation,
-                                    child: SlideTransition(
-                                      position: Tween<Offset>(
-                                        begin: const Offset(0, 0.12),
-                                        end: Offset.zero,
-                                      ).animate(animation),
-                                      child: child,
-                                    ),
-                                  ),
-                              child: _FloatingReel(
-                                key: ValueKey(_i),
-                                reel: reel,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
+                      ),
+                      child: KeyedSubtree(
+                        key: ValueKey(_i),
+                        child: _mock(_i),
+                      ),
                     ),
                   ),
                 ),
               ),
             ),
+            const SizedBox(height: AppSpacing.md),
+            Center(
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 300),
+                child: Text(
+                  _label(context, _i),
+                  key: ValueKey(_i),
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.sm),
             Center(
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  for (int i = 0; i < _reels.length; i++)
+                  for (int i = 0; i < _count; i++)
                     AnimatedContainer(
                       duration: const Duration(milliseconds: 250),
                       margin: const EdgeInsets.symmetric(horizontal: 3),
@@ -777,238 +769,9 @@ class _ShowcaseSlideState extends State<_ShowcaseSlide> {
                 ],
               ),
             ),
-            const SizedBox(height: AppSpacing.xl),
+            const SizedBox(height: AppSpacing.lg),
           ],
         ),
-      ),
-    );
-  }
-}
-
-/// A minimal iPhone-style device frame with a small app mock inside. The role
-/// "reel" floats over its top edge (rendered separately, outside the frame).
-class _PhoneFrame extends StatelessWidget {
-  const _PhoneFrame();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 210,
-      height: 400,
-      padding: const EdgeInsets.all(7),
-      decoration: BoxDecoration(
-        color: AppColors.ink,
-        borderRadius: BorderRadius.circular(46),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.black.withValues(alpha: 0.22),
-            blurRadius: 36,
-            offset: const Offset(0, 20),
-            spreadRadius: -8,
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(39),
-        child: Container(
-          color: AppColors.background,
-          child: Stack(
-            children: [
-              // App mock lives in the lower half — the upper half sits behind
-              // the floating card.
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 176, 16, 22),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    _mockCard(),
-                    const SizedBox(height: 12),
-                    _mockCard(),
-                  ],
-                ),
-              ),
-              // Dynamic-island pill (centred).
-              Align(
-                alignment: Alignment.topCenter,
-                child: Container(
-                  margin: const EdgeInsets.only(top: 12),
-                  width: 72,
-                  height: 20,
-                  decoration: BoxDecoration(
-                    color: AppColors.ink,
-                    borderRadius: BorderRadius.circular(AppRadius.pill),
-                  ),
-                ),
-              ),
-              // Home indicator (centred) for balance.
-              Align(
-                alignment: Alignment.bottomCenter,
-                child: Container(
-                  margin: const EdgeInsets.only(bottom: 10),
-                  width: 92,
-                  height: 5,
-                  decoration: BoxDecoration(
-                    color: AppColors.separator,
-                    borderRadius: BorderRadius.circular(AppRadius.pill),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _mockCard() {
-    return Container(
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: AppColors.fill,
-        borderRadius: BorderRadius.circular(AppRadius.md),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: AppColors.separator,
-              borderRadius: BorderRadius.circular(AppRadius.sm),
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(height: 8, width: 82, color: AppColors.separator),
-                const SizedBox(height: 6),
-                Container(height: 8, width: 52, color: AppColors.separator),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// The floating "3 ways" card — the reel, lifted off the device with a soft
-/// shadow so it reads as hovering above the phone.
-class _FloatingReel extends StatelessWidget {
-  const _FloatingReel({super.key, required this.reel});
-  final _Reel reel;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.black.withValues(alpha: 0.18),
-            blurRadius: 30,
-            offset: const Offset(0, 16),
-            spreadRadius: -6,
-          ),
-        ],
-      ),
-      child: _ReelCard(reel: reel),
-    );
-  }
-}
-
-class _Reel {
-  const _Reel({
-    required this.icon,
-    required this.role,
-    required this.headline,
-    required this.features,
-  });
-  final IconData icon;
-  final String role;
-  final String headline;
-  final List<String> features;
-}
-
-class _ReelCard extends StatelessWidget {
-  const _ReelCard({required this.reel});
-  final _Reel reel;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return NeuSurface(
-      borderRadius: AppRadius.lg,
-      padding: const EdgeInsets.all(AppSpacing.md),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: AppColors.accent,
-                  borderRadius: BorderRadius.circular(AppRadius.sm),
-                ),
-                child: Icon(reel.icon, color: AppColors.onAccent, size: 21),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      reel.role.toUpperCase(),
-                      style: const TextStyle(
-                        color: AppColors.secondaryLabel,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0.6,
-                      ),
-                    ),
-                    const SizedBox(height: 1),
-                    Text(
-                      reel.headline,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.md),
-          for (final f in reel.features)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 7),
-              child: Row(
-                children: [
-                  const Icon(AppIcons.check, size: 15, color: AppColors.ink),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      f,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-        ],
       ),
     );
   }

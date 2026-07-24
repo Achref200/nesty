@@ -8,6 +8,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../../../app/di/injection.dart';
 import '../../../../app/router/app_routes.dart';
 import '../../../../core/branding/app_icons.dart';
+import '../../../../core/localization/app_locale.dart';
 import '../../../../core/services/app_feedback.dart';
 import '../../../../core/services/cloudinary_service.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -23,6 +24,7 @@ import '../../../../core/widgets/neu/neu_tappable.dart';
 import '../../../auth/domain/entities/app_user.dart';
 import '../../../auth/domain/entities/user_role.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
+import '../../../onboarding/data/profile_setup_store.dart';
 import '../../../subscription/data/subscription_store.dart';
 import '../../../subscription/domain/entities/subscription_plan.dart';
 import '../../../subscription/presentation/pages/paywall_page.dart';
@@ -36,7 +38,7 @@ class ProfilePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return IosSliverScaffold(
-      title: 'Profile',
+      title: context.copy('Profile', 'Profil'),
       leading: showBack
           ? IconButton(
               icon: const Icon(AppIcons.back, size: 20),
@@ -66,16 +68,16 @@ class ProfilePage extends StatelessWidget {
                 child: VerificationCard(),
               ),
               const SizedBox(height: AppSpacing.xl),
-              const FadeSlideIn(
-                delay: Duration(milliseconds: 100),
-                child: _SectionLabel('Account'),
+              FadeSlideIn(
+                delay: const Duration(milliseconds: 100),
+                child: _SectionLabel(context.copy('Account', 'Compte')),
               ),
               const SizedBox(height: AppSpacing.sm),
               FadeSlideIn(
                 delay: const Duration(milliseconds: 140),
                 child: _Tile(
                   AppIcons.profile,
-                  'Personal details',
+                  context.copy('Personal details', 'Informations personnelles'),
                   onTap: () => _editName(context),
                 ),
               ),
@@ -84,7 +86,7 @@ class ProfilePage extends StatelessWidget {
                 delay: const Duration(milliseconds: 160),
                 child: _Tile(
                   AppIcons.lock,
-                  'Change password',
+                  context.copy('Change password', 'Modifier le mot de passe'),
                   onTap: () => _changePassword(context),
                 ),
               ),
@@ -93,7 +95,10 @@ class ProfilePage extends StatelessWidget {
                 delay: const Duration(milliseconds: 180),
                 child: _Tile(
                   AppIcons.settings,
-                  'Settings & preferences',
+                  context.copy(
+                    'Settings & preferences',
+                    'Réglages et préférences',
+                  ),
                   onTap: () => context.push(AppRoutes.settings),
                 ),
               ),
@@ -106,10 +111,13 @@ class ProfilePage extends StatelessWidget {
               FadeSlideIn(
                 delay: const Duration(milliseconds: 340),
                 child: NeuButton(
-                  label: 'Sign out',
+                  label: context.copy('Sign out', 'Se déconnecter'),
                   filled: false,
                   icon: AppIcons.signOut,
-                  onPressed: () => context.read<AuthCubit>().signOut(),
+                  onPressed: () {
+                    sl<ProfileSetupStore>().reset();
+                    context.read<AuthCubit>().signOut();
+                  },
                 ),
               ),
             ],
@@ -138,25 +146,31 @@ class ProfilePage extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              'New password',
+              context.copy('New password', 'Nouveau mot de passe'),
               style: Theme.of(sheetContext).textTheme.titleLarge,
             ),
             const SizedBox(height: AppSpacing.lg),
             NeuField(
               controller: controller,
-              placeholder: 'New password (6+ characters)',
+              placeholder: context.copy(
+                'New password (6+ characters)',
+                'Nouveau mot de passe (6+ caractères)',
+              ),
               icon: AppIcons.lock,
               obscureText: true,
             ),
             const SizedBox(height: AppSpacing.lg),
             NeuButton(
-              label: 'Update password',
+              label: context.copy('Update password', 'Mettre à jour'),
               onPressed: () async {
                 final pw = controller.text;
                 if (pw.length < 6) {
                   AppFeedback.error(
                     sheetContext,
-                    'Password needs at least 6 characters.',
+                    context.copy(
+                      'Password needs at least 6 characters.',
+                      'Le mot de passe doit faire au moins 6 caractères.',
+                    ),
                   );
                   return;
                 }
@@ -164,7 +178,10 @@ class ProfilePage extends StatelessWidget {
                 final error = await cubit.updatePassword(pw);
                 if (!context.mounted) return;
                 if (error == null) {
-                  AppFeedback.success(context, 'Password updated.');
+                  AppFeedback.success(
+                    context,
+                    context.copy('Password updated.', 'Mot de passe mis à jour.'),
+                  );
                 } else {
                   AppFeedback.error(context, error);
                 }
@@ -197,18 +214,18 @@ class ProfilePage extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              'Your name',
+              context.copy('Your name', 'Votre nom'),
               style: Theme.of(sheetContext).textTheme.titleLarge,
             ),
             const SizedBox(height: AppSpacing.lg),
             NeuField(
               controller: controller,
-              placeholder: 'Full name',
+              placeholder: context.copy('Full name', 'Nom complet'),
               icon: Icons.person_outline_rounded,
             ),
             const SizedBox(height: AppSpacing.lg),
             NeuButton(
-              label: 'Save',
+              label: context.copy('Save', 'Enregistrer'),
               onPressed: () {
                 cubit.updateName(controller.text);
                 Navigator.of(sheetContext).pop();
@@ -240,7 +257,7 @@ class _ProfileCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  user?.displayName ?? 'Guest',
+                  user?.displayName ?? context.copy('Guest', 'Invité'),
                   style: theme.textTheme.titleMedium,
                 ),
                 const SizedBox(height: 2),
@@ -285,7 +302,10 @@ class _AvatarEditorState extends State<_AvatarEditor> {
     if (error != null) {
       AppFeedback.error(context, error);
     } else {
-      AppFeedback.success(context, 'Profile photo updated');
+      AppFeedback.success(
+        context,
+        context.copy('Profile photo updated', 'Photo de profil mise à jour'),
+      );
     }
   }
 
@@ -364,9 +384,9 @@ class _RoleBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (icon, label) = switch (role) {
-      UserRole.host => (AppIcons.agency, 'Agency account'),
-      UserRole.partner => (AppIcons.partner, 'Partner account'),
-      UserRole.seeker => (AppIcons.seeker, 'Seeker account'),
+      UserRole.host => (AppIcons.agency, context.copy('Agency account', 'Compte agence')),
+      UserRole.partner => (AppIcons.partner, context.copy('Partner account', 'Compte partenaire')),
+      UserRole.seeker => (AppIcons.seeker, context.copy('Seeker account', 'Compte chercheur')),
     };
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
@@ -485,19 +505,25 @@ class _PartnerTile extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(
-                '${sub?.plan.label ?? 'Partner'} plan',
+                context.copy(
+                  '${sub?.plan.label ?? 'Partner'} plan',
+                  'Offre ${sub?.plan.label ?? 'Partenaire'}',
+                ),
                 style: Theme.of(sheetContext).textTheme.titleLarge,
               ),
               const SizedBox(height: 4),
               Text(
                 renew == null
-                    ? 'Active subscription.'
-                    : 'Renews ${renew.day}/${renew.month}/${renew.year}.',
+                    ? context.copy('Active subscription.', 'Abonnement actif.')
+                    : context.copy(
+                        'Renews ${renew.day}/${renew.month}/${renew.year}.',
+                        'Renouvellement le ${renew.day}/${renew.month}/${renew.year}.',
+                      ),
                 style: Theme.of(sheetContext).textTheme.bodyMedium,
               ),
               const SizedBox(height: AppSpacing.xl),
               NeuButton(
-                label: 'Change plan',
+                label: context.copy('Change plan', 'Changer d\'offre'),
                 icon: AppIcons.trending,
                 onPressed: () {
                   Navigator.of(sheetContext).pop();
@@ -506,7 +532,7 @@ class _PartnerTile extends StatelessWidget {
               ),
               const SizedBox(height: AppSpacing.md),
               NeuButton(
-                label: 'Cancel subscription',
+                label: context.copy('Cancel subscription', 'Résilier l\'abonnement'),
                 filled: false,
                 icon: AppIcons.close,
                 onPressed: () async {
@@ -520,7 +546,10 @@ class _PartnerTile extends StatelessWidget {
                   if (error == null) {
                     AppFeedback.success(
                       context,
-                      'Subscription cancelled — you\'re back to a seeker account.',
+                      context.copy(
+                        'Subscription cancelled — you\'re back to a seeker account.',
+                        'Abonnement résilié — vous êtes de nouveau chercheur.',
+                      ),
                     );
                   } else {
                     AppFeedback.error(context, error);
@@ -529,9 +558,14 @@ class _PartnerTile extends StatelessWidget {
               ),
               const SizedBox(height: AppSpacing.sm),
               Text(
-                'Your Partner space stays available until the plan ends. You '
-                'can only return to a seeker account by cancelling or letting '
-                'it lapse.',
+                context.copy(
+                  'Your Partner space stays available until the plan ends. You '
+                      'can only return to a seeker account by cancelling or letting '
+                      'it lapse.',
+                  'Votre espace Partenaire reste actif jusqu\'à la fin de l\'offre. '
+                      'Vous ne redevenez chercheur qu\'en résiliant ou en laissant '
+                      'l\'abonnement expirer.',
+                ),
                 style: Theme.of(sheetContext).textTheme.bodySmall?.copyWith(
                       color: AppColors.textTertiary,
                     ),
@@ -553,7 +587,7 @@ class _PartnerTile extends StatelessWidget {
     if (role == UserRole.partner) {
       return _Tile(
         AppIcons.subscription,
-        'Manage subscription',
+        context.copy('Manage subscription', 'Gérer l\'abonnement'),
         onTap: () => _manage(context),
       );
     }
@@ -587,14 +621,17 @@ class _PartnerTile extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Become a Partner',
+                  context.copy('Become a Partner', 'Devenir partenaire'),
                   style: theme.textTheme.titleMedium?.copyWith(
                     color: AppColors.onAccent,
                   ),
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  'List homes from your network and earn. Subscription plans.',
+                  context.copy(
+                    'List homes from your network and earn. Subscription plans.',
+                    'Publiez des logements de votre réseau et gagnez. Abonnements.',
+                  ),
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: AppColors.onAccent.withValues(alpha: 0.8),
                   ),

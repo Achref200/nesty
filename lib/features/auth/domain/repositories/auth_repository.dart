@@ -1,6 +1,7 @@
 import 'package:dartz/dartz.dart';
 
 import '../../../../core/error/failures.dart';
+import '../entities/account_standing.dart';
 import '../entities/app_user.dart';
 import '../entities/user_role.dart';
 
@@ -42,4 +43,12 @@ abstract interface class AuthRepository {
 
   /// Stream of the user across session changes (null = signed out).
   Stream<AppUser?> authStateChanges();
+
+  /// Re-checks account standing with the backend. Returns
+  /// [AccountStanding.unknown] when the check itself fails (never blocks on
+  /// an error).
+  Future<AccountStanding> accountStatus();
+
+  /// Permanently deletes the signed-in account.
+  Future<Either<Failure, Unit>> deleteAccount();
 }

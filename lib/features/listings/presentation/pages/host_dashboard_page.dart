@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../app/di/injection.dart';
+import '../../../../core/localization/app_locale.dart';
 import '../../../../core/services/supabase_service.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
@@ -28,7 +29,7 @@ class HostDashboardPage extends StatelessWidget {
     );
 
     return IosSliverScaffold(
-      title: 'Dashboard',
+      title: context.copy('Dashboard', 'Tableau de bord'),
       slivers: [
         SliverPadding(
           padding: const EdgeInsets.fromLTRB(
@@ -41,7 +42,7 @@ class HostDashboardPage extends StatelessWidget {
             children: [
               FadeSlideIn(
                 child: Text(
-                  'Welcome back, $name.',
+                  context.copy('Welcome back, $name.', 'Bon retour, $name.'),
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
               ),
@@ -86,7 +87,10 @@ class _ReservationsOverview extends StatelessWidget {
                   child: _CountCard(
                     icon: Icons.mark_email_unread_outlined,
                     value: '$pending',
-                    label: 'Pending requests',
+                    label: context.copy(
+                      'Pending requests',
+                      'Demandes en attente',
+                    ),
                   ),
                 ),
                 const SizedBox(width: AppSpacing.md),
@@ -94,13 +98,13 @@ class _ReservationsOverview extends StatelessWidget {
                   child: _CountCard(
                     icon: Icons.event_available_outlined,
                     value: '${upcoming.length}',
-                    label: 'Upcoming',
+                    label: context.copy('Upcoming', 'À venir'),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: AppSpacing.xl),
-            const _SectionLabel('Next up'),
+            _SectionLabel(context.copy('Next up', 'À suivre')),
             const SizedBox(height: AppSpacing.md),
             if (upcoming.isEmpty)
               NeuSurface(
@@ -116,8 +120,12 @@ class _ReservationsOverview extends StatelessWidget {
                     const SizedBox(width: AppSpacing.md),
                     Expanded(
                       child: Text(
-                        'No requests yet. When seekers book a visit or reserve '
-                        'dates, they land here.',
+                        context.copy(
+                          'No requests yet. When seekers book a visit or reserve '
+                          'dates, they land here.',
+                          'Aucune demande pour le moment. Les visites et '
+                          'réservations des chercheurs apparaîtront ici.',
+                        ),
                         style: Theme.of(context).textTheme.bodyMedium,
                       ),
                     ),
@@ -251,13 +259,13 @@ class _ListingPerformanceCard extends StatelessWidget {
               _MiniStat(
                 icon: Icons.visibility_outlined,
                 value: '$views',
-                label: 'views',
+                label: context.copy('views', 'vues'),
               ),
               const SizedBox(width: AppSpacing.xl),
               _MiniStat(
                 icon: Icons.favorite_border_rounded,
                 value: '$saves',
-                label: 'saves',
+                label: context.copy('saves', 'favoris'),
               ),
             ],
           ),
@@ -430,8 +438,12 @@ class _EngagementSectionState extends State<_EngagementSection> {
         borderRadius: AppRadius.md,
         padding: const EdgeInsets.all(AppSpacing.xl),
         child: Text(
-          'Engagement insights appear here once seekers start exploring your '
-          'listings.',
+          context.copy(
+            'Engagement insights appear here once seekers start exploring your '
+            'listings.',
+            'Les indicateurs apparaîtront ici dès que les chercheurs '
+            'exploreront vos annonces.',
+          ),
           style: Theme.of(context).textTheme.bodyMedium,
         ),
       );
@@ -439,7 +451,7 @@ class _EngagementSectionState extends State<_EngagementSection> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const _SectionLabel('Engagement'),
+        _SectionLabel(context.copy('Engagement', 'Engagement')),
         const SizedBox(height: AppSpacing.md),
         Row(
           children: [
@@ -447,7 +459,7 @@ class _EngagementSectionState extends State<_EngagementSection> {
               child: _CountCard(
                 icon: Icons.visibility_outlined,
                 value: '${s.views}',
-                label: 'Views',
+                label: context.copy('Views', 'Vues'),
               ),
             ),
             const SizedBox(width: AppSpacing.md),
@@ -455,7 +467,7 @@ class _EngagementSectionState extends State<_EngagementSection> {
               child: _CountCard(
                 icon: Icons.favorite_border_rounded,
                 value: '${s.saves}',
-                label: 'Saves',
+                label: context.copy('Saves', 'Favoris'),
               ),
             ),
           ],
@@ -467,7 +479,7 @@ class _EngagementSectionState extends State<_EngagementSection> {
               child: _CountCard(
                 icon: Icons.event_available_outlined,
                 value: '${s.tours}',
-                label: 'Tour requests',
+                label: context.copy('Tour requests', 'Demandes de visite'),
               ),
             ),
             const SizedBox(width: AppSpacing.md),
@@ -475,7 +487,7 @@ class _EngagementSectionState extends State<_EngagementSection> {
               child: _CountCard(
                 icon: Icons.home_work_outlined,
                 value: '${s.listings}',
-                label: 'Listings',
+                label: context.copy('Listings', 'Annonces'),
               ),
             ),
           ],

@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../app/router/app_routes.dart';
 import '../../../../app/di/injection.dart';
 import '../../../../core/branding/app_icons.dart';
+import '../../../../core/localization/app_locale.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/widgets/ios/ios_sliver_scaffold.dart';
@@ -221,16 +222,19 @@ class _SearchField extends StatelessWidget {
                   vertical: 11,
                 ),
                 child: Row(
-                  children: const [
-                    Icon(
+                  children: [
+                    const Icon(
                       AppIcons.explore,
                       color: AppColors.secondaryLabel,
                       size: 20,
                     ),
-                    SizedBox(width: AppSpacing.sm),
+                    const SizedBox(width: AppSpacing.sm),
                     Text(
-                      'Search city, area or budget',
-                      style: TextStyle(
+                      context.copy(
+                        'Search city, area or budget',
+                        'Ville, quartier ou budget',
+                      ),
+                      style: const TextStyle(
                         color: AppColors.secondaryLabel,
                         fontSize: 17,
                       ),
@@ -376,10 +380,16 @@ class _ErrorState extends StatelessWidget {
               ),
             ),
             const SizedBox(height: AppSpacing.xl),
-            Text('Couldn\'t load homes', style: theme.textTheme.titleMedium),
+            Text(
+              context.copy('Couldn\'t load homes', 'Chargement impossible'),
+              style: theme.textTheme.titleMedium,
+            ),
             const SizedBox(height: AppSpacing.sm),
             Text(
-              'It\'s usually a dropped connection. Give it another try.',
+              context.copy(
+                'It\'s usually a dropped connection. Give it another try.',
+                'C\'est souvent la connexion. Réessayez.',
+              ),
               textAlign: TextAlign.center,
               style: theme.textTheme.bodyMedium,
             ),
@@ -387,7 +397,7 @@ class _ErrorState extends StatelessWidget {
             SizedBox(
               width: 180,
               child: NeuButton(
-                label: 'Try again',
+                label: context.copy('Try again', 'Réessayer'),
                 icon: AppIcons.chevronRight,
                 onPressed: onRetry,
               ),
@@ -430,14 +440,25 @@ class _EmptyFeed extends StatelessWidget {
             ),
             const SizedBox(height: AppSpacing.xl),
             Text(
-              filtered ? 'No homes match your filters' : 'No homes here yet',
+              filtered
+                  ? context.copy(
+                      'No homes match your filters',
+                      'Aucun logement ne correspond',
+                    )
+                  : context.copy('No homes here yet', 'Rien ici pour l\'instant'),
               style: theme.textTheme.titleMedium,
             ),
             const SizedBox(height: AppSpacing.sm),
             Text(
               filtered
-                  ? 'Try widening your budget or clearing a filter.'
-                  : 'New places land here as agencies publish them.',
+                  ? context.copy(
+                      'Try widening your budget or clearing a filter.',
+                      'Élargissez votre budget ou retirez un filtre.',
+                    )
+                  : context.copy(
+                      'New places land here as agencies publish them.',
+                      'De nouveaux logements arrivent dès leur publication.',
+                    ),
               textAlign: TextAlign.center,
               style: theme.textTheme.bodyMedium,
             ),
@@ -445,7 +466,10 @@ class _EmptyFeed extends StatelessWidget {
               const SizedBox(height: AppSpacing.xl),
               SizedBox(
                 width: 180,
-                child: NeuButton(label: 'Clear filters', onPressed: onClear!),
+                child: NeuButton(
+                  label: context.copy('Clear filters', 'Effacer les filtres'),
+                  onPressed: onClear!,
+                ),
               ),
             ],
           ],

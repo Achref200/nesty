@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../core/services/push_service.dart';
 import '../../../core/services/supabase_service.dart';
 
 /// A single notification shown in the activity center.
@@ -79,8 +80,12 @@ class NotificationsStore extends ChangeNotifier {
           value: uid,
         ),
         callback: (payload) {
-          _items.insert(0, _from(payload.newRecord));
+          final n = _from(payload.newRecord);
+          _items.insert(0, n);
           notifyListeners();
+          // Ping the device with a heads-up notification (honours the user's
+          // Settings preference). Best-effort; never blocks the store.
+          PushService.show(title: n.title, body: n.body);
         },
       )
       ..subscribe();

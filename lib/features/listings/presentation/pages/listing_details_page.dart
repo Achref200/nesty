@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/branding/app_icons.dart';
 import '../../../../core/config/ai_config.dart';
 import '../../../../core/format/money.dart';
+import '../../../../core/localization/app_locale.dart';
 import '../../../../core/services/analytics_service.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
@@ -38,7 +39,11 @@ class ListingDetailsPage extends StatelessWidget {
           }
           if (state.status == ListingDetailsStatus.failure ||
               state.property == null) {
-            return Center(child: Text(state.errorMessage ?? 'Not found'));
+            return Center(
+              child: Text(
+                state.errorMessage ?? context.copy('Not found', 'Introuvable'),
+              ),
+            );
           }
           return _Content(property: state.property!);
         },
@@ -166,7 +171,7 @@ class _Content extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'About this place',
+                        context.copy('About this place', 'À propos du logement'),
                         style: theme.textTheme.titleMedium,
                       ),
                       const SizedBox(height: AppSpacing.sm),
@@ -191,7 +196,10 @@ class _Content extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Amenities', style: theme.textTheme.titleMedium),
+                      Text(
+                        context.copy('Amenities', 'Équipements'),
+                        style: theme.textTheme.titleMedium,
+                      ),
                       const SizedBox(height: AppSpacing.md),
                       _Amenities(amenities: property.amenities),
                     ],
@@ -238,14 +246,14 @@ class _Facts extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _Fact(AppIcons.bed, '${property.bedrooms}', 'Bedrooms'),
+          _Fact(AppIcons.bed, '${property.bedrooms}', context.copy('Bedrooms', 'Chambres')),
           _divider(),
-          _Fact(AppIcons.bath, '${property.bathrooms}', 'Bathrooms'),
+          _Fact(AppIcons.bath, '${property.bathrooms}', context.copy('Bathrooms', 'Salles de bain')),
           _divider(),
           _Fact(
             AppIcons.area,
             '${property.areaSqm.toStringAsFixed(0)} m²',
-            'Area',
+            context.copy('Area', 'Surface'),
           ),
         ],
       ),
@@ -347,10 +355,19 @@ class _AskAiCard extends StatelessWidget {
           context,
           subtitle: property.title,
           contextNote: _listingContext(property),
-          suggestions: const [
-            'Is this a fair price for the area?',
-            'What should I ask the host?',
-            'Give me the pros and cons',
+          suggestions: [
+            context.copy(
+              'Is this a fair price for the area?',
+              'Le prix est-il correct pour le quartier ?',
+            ),
+            context.copy(
+              'What should I ask the host?',
+              'Que dois-je demander à l\'hôte ?',
+            ),
+            context.copy(
+              'Give me the pros and cons',
+              'Donne-moi les avantages et inconvénients',
+            ),
           ],
         );
       },
@@ -382,13 +399,19 @@ class _AskAiCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Ask Nesty AI about this place',
+                    context.copy(
+                      'Ask Nesty AI about this place',
+                      'Demander à l\'IA Nesty sur ce logement',
+                    ),
                     style: Theme.of(context).textTheme.titleSmall,
                   ),
                   const SizedBox(height: 2),
-                  const Text(
-                    'Deal check, what to ask the host, pros & cons\u2026',
-                    style: TextStyle(
+                  Text(
+                    context.copy(
+                      'Deal check, what to ask the host, pros & cons…',
+                      'Bon plan, questions à l\'hôte, avantages & inconvénients…',
+                    ),
+                    style: const TextStyle(
                       fontSize: 12.5,
                       color: AppColors.textSecondary,
                     ),
@@ -424,7 +447,7 @@ class _HostRow extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Hosted by $hostName',
+              context.copy('Hosted by $hostName', 'Proposé par $hostName'),
               style: const TextStyle(fontWeight: FontWeight.w700),
             ),
             Text(
@@ -494,9 +517,9 @@ class _BottomBar extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: 3),
-                    const Text(
-                      '/ mo',
-                      style: TextStyle(
+                    Text(
+                      context.copy('/ mo', '/ mois'),
+                      style: const TextStyle(
                         color: AppColors.secondaryLabel,
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
@@ -505,11 +528,14 @@ class _BottomBar extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 3),
-                const Text(
-                  'Free to request · you pick the dates',
+                Text(
+                  context.copy(
+                    'Free to request · you pick the dates',
+                    'Demande gratuite · vous choisissez les dates',
+                  ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
+                  style: const TextStyle(
                     color: AppColors.secondaryLabel,
                     fontSize: 12,
                     fontWeight: FontWeight.w500,
@@ -520,7 +546,7 @@ class _BottomBar extends StatelessWidget {
           ),
           const SizedBox(width: AppSpacing.md),
           NeuButton(
-            label: 'Reserve',
+            label: context.copy('Reserve', 'Réserver'),
             icon: AppIcons.calendar,
             expand: false,
             onPressed: () => _reserve(context),
@@ -535,8 +561,11 @@ class _BottomBar extends StatelessWidget {
     final created = await startReservationFlow(context, property);
     if (created && context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Request sent — track it in Trips.'),
+        SnackBar(
+          content: Text(context.copy(
+            'Request sent — track it in Trips.',
+            'Demande envoyée — suivez-la dans Voyages.',
+          )),
           behavior: SnackBarBehavior.floating,
         ),
       );

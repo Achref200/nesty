@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../features/auth/domain/entities/user_role.dart';
 import '../../features/auth/presentation/cubit/auth_cubit.dart';
+import '../../features/auth/presentation/pages/account_blocked_page.dart';
 import '../../features/auth/presentation/pages/auth_page.dart';
 import '../../features/listings/presentation/cubit/listing_details_cubit.dart';
 import '../../features/listings/presentation/pages/listing_details_page.dart';
@@ -36,11 +37,19 @@ GoRouter createRouter(AuthCubit authCubit) {
         return onSplash ? null : AppRoutes.splash;
       }
 
+      // A blocked account (banned / paused / deleted) gets a dedicated surface
+      // instead of the app or the sign-in flow.
+      if (status == AuthStatus.blocked) {
+        return loc == AppRoutes.blocked ? null : AppRoutes.blocked;
+      }
+
       final loggedIn = status == AuthStatus.authenticated;
       if (!loggedIn) {
         return onAuthFlow ? null : AppRoutes.welcome;
       }
-      if (onSplash || onAuthFlow) return AppRoutes.home;
+      if (onSplash || onAuthFlow || loc == AppRoutes.blocked) {
+        return AppRoutes.home;
+      }
       return null;
     },
     routes: [
@@ -56,6 +65,11 @@ GoRouter createRouter(AuthCubit authCubit) {
         path: AppRoutes.auth,
         pageBuilder: (_, state) =>
             MaterialPage(child: AuthPage(role: state.extra as UserRole?)),
+      ),
+      GoRoute(
+        path: AppRoutes.blocked,
+        pageBuilder: (_, _) =>
+            const MaterialPage(child: AccountBlockedPage()),
       ),
       GoRoute(
         path: AppRoutes.home,

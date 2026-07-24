@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/services/local_store.dart';
 import '../../../../core/usecase/usecase.dart';
+import '../../domain/entities/account_standing.dart';
 import '../../domain/entities/app_user.dart';
 import '../../domain/entities/user_role.dart';
 import '../../domain/repositories/auth_repository.dart';
@@ -82,6 +83,18 @@ class AuthCubit extends Cubit<AuthState> {
       return;
     }
 
+    // A session that carries an active suspension in its JWT must not enter the
+    // app — block it immediately rather than waiting for the token to expire.
+    if (resolved.isBanned) {
+      _pendingProviderRole = null;
+      _signOut(const NoParams());
+      emit(AuthState(
+        status: AuthStatus.blocked,
+        block: _standingFromUser(resolved),
+      ));
+      return;
+    }
+
     // Enforce role scoping for OAuth: a session that arrives out-of-band must
     // match the space it was launched from. Only applies to a fresh sign-in
     // (not a token refresh on an already-authenticated session).
@@ -129,19 +142,58 @@ class AuthCubit extends Cubit<AuthState> {
   /// Called once at startup to restore any existing session.
   Future<void> checkSession() async {
     final result = await _getCurrentUser(const NoParams());
-    result.fold(
-      (_) => emit(state.copyWith(status: AuthStatus.unauthenticated)),
-      (user) {
+    await result.fold(
+      (_) async => emit(state.copyWith(status: AuthStatus.unauthenticated)),
+      (user) async {
         final resolved = _applyOverride(user);
-        emit(
-          resolved == null
-              ? state.copyWith(status: AuthStatus.unauthenticated)
-              : state.copyWith(
-                  status: AuthStatus.authenticated, user: resolved),
-        );
+        if (resolved == null) {
+          emit(state.copyWith(status: AuthStatus.unauthenticated));
+          return;
+        }
+        if (resolved.isBanned) {
+          await _blockAndSignOut(_standingFromUser(resolved));
+          return;
+        }
+        emit(state.copyWith(status: AuthStatus.authenticated, user: resolved));
+        // Confirm with the backend that the account is still allowed in — this
+        // catches a ban or deletion applied since the token was issued.
+        await verifyStillActive();
       },
     );
   }
+
+  /// Re-checks account standing with the backend. If the account has been
+  /// banned, paused or deleted, the session is dropped and the app shows the
+  /// blocked surface. Safe to call on every launch and on resume.
+  Future<void> verifyStillActive() async {
+    if (state.status != AuthStatus.authenticated) return;
+    final standing = await _repository.accountStatus();
+    if (standing.isBlocked) {
+      await _blockAndSignOut(standing);
+    }
+  }
+
+  Future<void> _blockAndSignOut(AccountStanding standing) async {
+    _pendingProviderRole = null;
+    await _signOut(const NoParams());
+    await _clearRoleOverride();
+    emit(AuthState(status: AuthStatus.blocked, block: standing));
+  }
+
+  /// Dismisses the blocked surface and returns to the signed-out entry.
+  void acknowledgeBlock() {
+    if (state.status == AuthStatus.blocked) {
+      emit(const AuthState(status: AuthStatus.unauthenticated));
+    }
+  }
+
+  AccountStanding _standingFromUser(AppUser user) => AccountStanding(
+    user.banType == 'disable'
+        ? AccountStandingKind.disabled
+        : AccountStandingKind.banned,
+    reason: user.banReason,
+    until: user.bannedUntil,
+  );
 
   Future<void> signIn(String email, String password) async {
     await signInScoped(email, password);
@@ -162,16 +214,22 @@ class AuthCubit extends Cubit<AuthState> {
     );
     return result.fold(
       (failure) {
-        emit(
-          state.copyWith(
-            status: AuthStatus.unauthenticated,
-            errorMessage: failure.message,
-          ),
-        );
+        // Keep the message off the global toast — the surface classifies it
+        // and shows tailored guidance (no account / wrong password / banned).
+        emit(state.copyWith(
+          status: AuthStatus.unauthenticated,
+          clearError: true,
+        ));
         return AuthAttempt(error: failure.message);
       },
       (user) {
         final resolved = _applyOverride(user) ?? user;
+        // A returning account that has since been suspended must not get in.
+        if (resolved.isBanned) {
+          _signOut(const NoParams());
+          emit(const AuthState(status: AuthStatus.unauthenticated));
+          return AuthAttempt(error: 'This account is suspended.');
+        }
         if (expectedRole != null && resolved.role != expectedRole) {
           // Wrong door — don't authenticate here. Sign the fresh session out
           // and tell the UI where this account belongs.
@@ -187,7 +245,9 @@ class AuthCubit extends Cubit<AuthState> {
     );
   }
 
-  Future<void> signUp(
+  /// Creates an account. Returns an error message to display, or null on
+  /// success (the session then drives navigation into the app).
+  Future<String?> signUp(
     String fullName,
     String email,
     String password,
@@ -208,13 +268,14 @@ class AuthCubit extends Cubit<AuthState> {
         role: signUpRole,
       ),
     );
-    await result.fold(
-      (failure) async => emit(
-        state.copyWith(
+    return await result.fold(
+      (failure) async {
+        emit(state.copyWith(
           status: AuthStatus.unauthenticated,
-          errorMessage: failure.message,
-        ),
-      ),
+          clearError: true,
+        ));
+        return failure.message;
+      },
       (user) async {
         emit(
           state.copyWith(
@@ -223,6 +284,7 @@ class AuthCubit extends Cubit<AuthState> {
           ),
         );
         if (wantsPartner) await switchRole(UserRole.partner);
+        return null;
       },
     );
   }
@@ -232,6 +294,23 @@ class AuthCubit extends Cubit<AuthState> {
     await _signOut(const NoParams());
     await _clearRoleOverride();
     emit(const AuthState(status: AuthStatus.unauthenticated));
+  }
+
+  /// Permanently deletes the signed-in account. Returns an error message, or
+  /// null on success (the app then drops to the signed-out entry).
+  Future<String?> deleteAccount() async {
+    emit(state.copyWith(status: AuthStatus.submitting, clearError: true));
+    final result = await _repository.deleteAccount();
+    final error = result.fold((failure) => failure.message, (_) => null);
+    if (error != null) {
+      // Stay signed in so the user can retry — surface the error.
+      emit(state.copyWith(status: AuthStatus.authenticated));
+      return error;
+    }
+    _pendingProviderRole = null;
+    await _clearRoleOverride();
+    emit(const AuthState(status: AuthStatus.unauthenticated));
+    return null;
   }
 
   /// Switches the active role, adapting the whole experience between browsing

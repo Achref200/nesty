@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../app/di/injection.dart';
+import '../../../../core/localization/app_locale.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/widgets/ios/ios_sliver_scaffold.dart';
@@ -26,7 +27,7 @@ class MyTripsPage extends StatelessWidget {
     );
 
     return IosSliverScaffold(
-      title: 'Trips',
+      title: context.copy('Trips', 'Voyages'),
       slivers: [
         SliverToBoxAdapter(
           child: ListenableBuilder(
@@ -55,7 +56,7 @@ class MyTripsPage extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     if (upcoming.isNotEmpty) ...[
-                      const _SectionLabel('Upcoming'),
+                      _SectionLabel(context.copy('Upcoming', 'À venir')),
                       const SizedBox(height: AppSpacing.md),
                       ...upcoming.map(
                         (r) => Padding(
@@ -76,7 +77,7 @@ class MyTripsPage extends StatelessWidget {
                     ],
                     if (past.isNotEmpty) ...[
                       const SizedBox(height: AppSpacing.lg),
-                      const _SectionLabel('History'),
+                      _SectionLabel(context.copy('History', 'Historique')),
                       const SizedBox(height: AppSpacing.md),
                       ...past.map(
                         (r) => Padding(
@@ -149,14 +150,21 @@ class _EmptyTrips extends StatelessWidget {
             const SizedBox(height: AppSpacing.xl),
             FadeSlideIn(
               delay: const Duration(milliseconds: 90),
-              child: Text('No trips yet', style: theme.textTheme.titleMedium),
+              child: Text(
+                context.copy('No trips yet', 'Aucun voyage'),
+                style: theme.textTheme.titleMedium,
+              ),
             ),
             const SizedBox(height: AppSpacing.sm),
             FadeSlideIn(
               delay: const Duration(milliseconds: 160),
               child: Text(
-                'Book a visit or reserve your summer dates on any home — '
-                'they\'ll appear here to track.',
+                context.copy(
+                  'Book a visit or reserve your summer dates on any home — '
+                      'they\'ll appear here to track.',
+                  'Réservez une visite ou vos dates d\'été sur un logement — '
+                      'ils apparaîtront ici à suivre.',
+                ),
                 textAlign: TextAlign.center,
                 style: theme.textTheme.bodyMedium,
               ),

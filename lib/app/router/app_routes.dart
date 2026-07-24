@@ -3,6 +3,7 @@ abstract final class AppRoutes {
   static const String splash = '/';
   static const String welcome = '/welcome';
   static const String auth = '/auth';
+  static const String blocked = '/blocked';
   static const String home = '/home';
   static const String listingDetails = '/listing/:id';
   static const String notifications = '/notifications';

@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart' as sb;
 import 'app/app.dart';
 import 'app/di/injection.dart';
 import 'core/services/local_store.dart';
+import 'core/services/push_service.dart';
 import 'core/services/supabase_service.dart';
 
 Future<void> main() async {
@@ -24,6 +25,7 @@ Future<void> main() async {
   await runZonedGuarded(() async {
     await LocalStore.init();
     await SupabaseService.init();
+    await PushService.init();
     await configureDependencies();
     runApp(const NestlyApp());
   }, (error, stack) {

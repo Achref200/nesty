@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../app/di/injection.dart';
 import '../../../../core/branding/app_icons.dart';
+import '../../../../core/localization/app_locale.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/widgets/neu/neu_surface.dart';
@@ -34,7 +35,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
       appBar: AppBar(
         backgroundColor: AppColors.background,
         surfaceTintColor: Colors.transparent,
-        title: const Text('Notifications'),
+        title: Text(context.copy('Notifications', 'Notifications')),
       ),
       body: ListenableBuilder(
         listenable: _store,
@@ -166,13 +167,20 @@ class _EmptyNotifications extends StatelessWidget {
             ),
           ),
           const SizedBox(height: AppSpacing.xl),
-          Text('Nothing yet', style: theme.textTheme.titleMedium),
+          Text(
+            context.copy('Nothing yet', 'Rien pour l\'instant'),
+            style: theme.textTheme.titleMedium,
+          ),
           const SizedBox(height: AppSpacing.sm),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xxl),
             child: Text(
-              'When you request a visit or an agency responds, updates show up '
-              'here in real time.',
+              context.copy(
+                'When you request a visit or an agency responds, updates show up '
+                    'here in real time.',
+                'Quand vous demandez une visite ou qu\'une agence répond, les '
+                    'mises à jour apparaissent ici en temps réel.',
+              ),
               textAlign: TextAlign.center,
               style: theme.textTheme.bodyMedium,
             ),

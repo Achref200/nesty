@@ -15,10 +15,30 @@ enum IdDocumentType {
     IdDocumentType.driverLicense => "Driver's licence",
   };
 
+  String labelFor(bool french) => switch (this) {
+    IdDocumentType.nationalId =>
+      french ? "Carte d'identité (CIN)" : 'National ID (CIN)',
+    IdDocumentType.passport => french ? 'Passeport' : 'Passport',
+    IdDocumentType.driverLicense =>
+      french ? 'Permis de conduire' : "Driver's licence",
+  };
+
   String get blurb => switch (this) {
     IdDocumentType.nationalId => 'Your Tunisian CIN — front and back.',
     IdDocumentType.passport => 'The photo page of your passport.',
     IdDocumentType.driverLicense => 'Your licence — front and back.',
+  };
+
+  String blurbFor(bool french) => switch (this) {
+    IdDocumentType.nationalId => french
+        ? 'Votre CIN tunisienne — recto et verso.'
+        : 'Your Tunisian CIN — front and back.',
+    IdDocumentType.passport => french
+        ? 'La page photo de votre passeport.'
+        : 'The photo page of your passport.',
+    IdDocumentType.driverLicense => french
+        ? 'Votre permis — recto et verso.'
+        : 'Your licence — front and back.',
   };
 
   /// Whether the document has two sides to capture (front + back).

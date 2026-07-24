@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/branding/app_icons.dart';
 import '../../../../core/format/money.dart';
+import '../../../../core/localization/app_locale.dart';
 import '../../../../core/services/analytics_service.dart';
 import '../../../../core/services/app_feedback.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -119,7 +120,10 @@ class _PropertyCardState extends State<PropertyCard> {
                         fontWeight: FontWeight.w800,
                       ),
                     ),
-                    Text(' / month', style: theme.textTheme.bodyMedium),
+                    Text(
+                      context.copy(' / month', ' / mois'),
+                      style: theme.textTheme.bodyMedium,
+                    ),
                   ],
                 ),
                 const SizedBox(height: AppSpacing.sm),
@@ -127,7 +131,10 @@ class _PropertyCardState extends State<PropertyCard> {
                   spacing: 6,
                   runSpacing: 6,
                   children: [
-                    _MiniTag(property.rentalTerm.label, filled: true),
+                    _MiniTag(
+                      property.rentalTerm.labelFor(context.isFrench),
+                      filled: true,
+                    ),
                     for (final t in property.tags.take(2))
                       _MiniTag(_prettyTag(t)),
                   ],
@@ -188,7 +195,9 @@ class _SaveButton extends StatelessWidget {
         if (!saved) Analytics.save(id);
         AppFeedback.info(
           context,
-          saved ? 'Removed from saved' : 'Saved to your list',
+          saved
+              ? context.copy('Removed from saved', 'Retiré des favoris')
+              : context.copy('Saved to your list', 'Ajouté à vos favoris'),
         );
       },
       behavior: HitTestBehavior.opaque,

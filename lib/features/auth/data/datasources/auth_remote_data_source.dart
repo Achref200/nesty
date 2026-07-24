@@ -1,3 +1,4 @@
+import '../../domain/entities/account_standing.dart';
 import '../../domain/entities/user_role.dart';
 import '../models/app_user_model.dart';
 
@@ -41,4 +42,12 @@ abstract interface class AuthRemoteDataSource {
   /// Emits the mapped user whenever the auth session changes (sign in/out,
   /// OAuth completion, token refresh). Null means signed out.
   Stream<AppUserModel?> authStateChanges();
+
+  /// Re-checks with the backend whether this account may still use the app —
+  /// catching a ban, a paused contract, or a deletion applied since the token
+  /// was issued. Never throws.
+  Future<AccountStanding> accountStatus();
+
+  /// Permanently deletes the signed-in account.
+  Future<void> deleteAccount();
 }

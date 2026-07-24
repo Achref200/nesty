@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../../../../core/branding/app_icons.dart';
 import '../../../../core/config/ai_config.dart';
+import '../../../../core/localization/app_locale.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../assistant/presentation/widgets/assistant_sheet.dart';
@@ -44,6 +45,15 @@ const _audience = <(String, String, IconData)>[
   ('baby', 'Baby', Icons.crib_rounded),
   ('pets', 'Pets', Icons.pets_rounded),
 ];
+
+/// The French label for an audience id (the tuple carries the English one).
+String _audienceFr(String id) => switch (id) {
+  'adults' => 'Adultes',
+  'children' => 'Enfants',
+  'baby' => 'Bébé',
+  'pets' => 'Animaux',
+  _ => id,
+};
 
 const _minPrice = 200.0;
 const _maxPrice = 6000.0;
@@ -148,7 +158,7 @@ class _FilterSheetState extends State<_FilterSheet> {
           ),
           child: Row(
             children: [
-              Text('Filters', style: theme.textTheme.titleLarge),
+              Text(context.copy('Filters', 'Filtres'), style: theme.textTheme.titleLarge),
               const Spacer(),
               if (AiConfig.enabled)
                 GestureDetector(
@@ -162,18 +172,18 @@ class _FilterSheetState extends State<_FilterSheet> {
                       color: AppColors.ink,
                       borderRadius: BorderRadius.circular(999),
                     ),
-                    child: const Row(
+                    child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(
+                        const Icon(
                           AppIcons.assistant,
                           size: 15,
                           color: AppColors.onAccent,
                         ),
-                        SizedBox(width: 6),
+                        const SizedBox(width: 6),
                         Text(
-                          'Ask AI',
-                          style: TextStyle(
+                          context.copy('Ask AI', 'Demander à l\'IA'),
+                          style: const TextStyle(
                             color: AppColors.onAccent,
                             fontSize: 12.5,
                             fontWeight: FontWeight.w700,
@@ -202,7 +212,7 @@ class _FilterSheetState extends State<_FilterSheet> {
             ),
             children: [
               // -------- Where --------
-              const _Label('Where to?'),
+              _Label(context.copy('Where to?', 'Où aller ?')),
               const SizedBox(height: AppSpacing.sm),
               Container(
                 decoration: BoxDecoration(
@@ -222,11 +232,15 @@ class _FilterSheetState extends State<_FilterSheet> {
                       child: TextField(
                         controller: _search,
                         onChanged: (_) => setState(() {}),
-                        decoration: const InputDecoration(
-                          hintText: 'Search a city or area',
+                        decoration: InputDecoration(
+                          hintText: context.copy(
+                            'Search a city or area',
+                            'Rechercher une ville ou un quartier',
+                          ),
                           border: InputBorder.none,
                           isDense: true,
-                          contentPadding: EdgeInsets.symmetric(vertical: 14),
+                          contentPadding:
+                              const EdgeInsets.symmetric(vertical: 14),
                         ),
                       ),
                     ),
@@ -248,7 +262,7 @@ class _FilterSheetState extends State<_FilterSheet> {
                 runSpacing: AppSpacing.sm,
                 children: [
                   _Chip(
-                    label: 'Nearby',
+                    label: context.copy('Nearby', 'À proximité'),
                     icon: Icons.near_me_rounded,
                     selected: _nearest,
                     onTap: () => setState(() => _nearest = !_nearest),
@@ -273,24 +287,24 @@ class _FilterSheetState extends State<_FilterSheet> {
               const SizedBox(height: AppSpacing.xl),
 
               // -------- Rental term --------
-              const _Label('How long'),
+              _Label(context.copy('How long', 'Durée')),
               const SizedBox(height: AppSpacing.sm),
               Row(
                 children: [
                   _Segment(
-                    label: 'Any',
+                    label: context.copy('Any', 'Peu importe'),
                     selected: _term == null,
                     onTap: () => setState(() => _term = null),
                   ),
                   const SizedBox(width: AppSpacing.sm),
                   _Segment(
-                    label: 'Long term',
+                    label: context.copy('Long term', 'Longue durée'),
                     selected: _term == RentalTerm.longTerm,
                     onTap: () => setState(() => _term = RentalTerm.longTerm),
                   ),
                   const SizedBox(width: AppSpacing.sm),
                   _Segment(
-                    label: 'Short term',
+                    label: context.copy('Short term', 'Courte durée'),
                     selected: _term == RentalTerm.shortTerm,
                     onTap: () => setState(() => _term = RentalTerm.shortTerm),
                   ),
@@ -301,7 +315,7 @@ class _FilterSheetState extends State<_FilterSheet> {
               // -------- Who --------
               Row(
                 children: [
-                  const _Label('Guests'),
+                  _Label(context.copy('Guests', 'Voyageurs')),
                   const Spacer(),
                   _RoundBtn(
                     icon: Icons.remove_rounded,
@@ -327,7 +341,7 @@ class _FilterSheetState extends State<_FilterSheet> {
                 ],
               ),
               const SizedBox(height: AppSpacing.lg),
-              const _Label('Suitable for'),
+              _Label(context.copy('Suitable for', 'Convient pour')),
               const SizedBox(height: AppSpacing.sm),
               Wrap(
                 spacing: AppSpacing.sm,
@@ -335,7 +349,7 @@ class _FilterSheetState extends State<_FilterSheet> {
                 children: [
                   for (final a in _audience)
                     _Chip(
-                      label: a.$2,
+                      label: context.isFrench ? _audienceFr(a.$1) : a.$2,
                       icon: a.$3,
                       selected: _aud.contains(a.$1),
                       onTap: () => setState(() {
@@ -351,10 +365,12 @@ class _FilterSheetState extends State<_FilterSheet> {
               // -------- Budget --------
               Row(
                 children: [
-                  const _Label('Max monthly price'),
+                  _Label(context.copy('Max monthly price', 'Prix mensuel max')),
                   const Spacer(),
                   Text(
-                    _price >= _maxPrice ? 'Any' : '${_price.round()} TND',
+                    _price >= _maxPrice
+                        ? context.copy('Any', 'Illimité')
+                        : '${_price.round()} TND',
                     style: const TextStyle(
                       fontWeight: FontWeight.w800,
                       color: AppColors.ink,
@@ -554,9 +570,9 @@ class _Footer extends StatelessWidget {
         children: [
           TextButton(
             onPressed: onClear,
-            child: const Text(
-              'Clear all',
-              style: TextStyle(
+            child: Text(
+              context.copy('Clear all', 'Tout effacer'),
+              style: const TextStyle(
                 color: AppColors.ink,
                 fontWeight: FontWeight.w800,
                 fontSize: 15,
@@ -576,18 +592,18 @@ class _Footer extends StatelessWidget {
                 color: AppColors.accent,
                 borderRadius: BorderRadius.circular(AppRadius.pill),
               ),
-              child: const Row(
+              child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(
+                  const Icon(
                     Icons.search_rounded,
                     size: 20,
                     color: AppColors.onAccent,
                   ),
-                  SizedBox(width: 8),
+                  const SizedBox(width: 8),
                   Text(
-                    'Show homes',
-                    style: TextStyle(
+                    context.copy('Show homes', 'Voir les logements'),
+                    style: const TextStyle(
                       color: AppColors.onAccent,
                       fontWeight: FontWeight.w800,
                       fontSize: 16,
