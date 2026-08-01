@@ -1,3 +1,4 @@
+import '../../domain/entities/listing_schema.dart';
 import '../../domain/entities/property.dart';
 
 /// Data-layer model for [Property] with Supabase (de)serialization.
@@ -30,6 +31,14 @@ class PropertyModel extends Property {
     super.availableFrom,
     super.billsIncluded,
     super.flatmates,
+    super.status,
+    super.propertyType,
+    super.maxGuests,
+    super.district,
+    super.contactPhone,
+    super.rules,
+    super.pricing,
+    super.conditions,
   });
 
   factory PropertyModel.fromMap(Map<String, dynamic> map) {
@@ -60,7 +69,27 @@ class PropertyModel extends Property {
       availableFrom: map['available_from'] as String?,
       billsIncluded: (map['bills_included'] as bool?) ?? false,
       flatmates: (map['flatmates'] as num?)?.toInt() ?? 0,
+      status: ListingStatusX.fromId(map['status'] as String?),
+      propertyType: PropertyTypeX.fromId(map['property_type'] as String?),
+      maxGuests: (map['max_guests'] as num?)?.toInt() ?? 0,
+      district: map['district'] as String?,
+      contactPhone: map['contact_phone'] as String?,
+      rules: HouseRules.fromMap(_jsonMap(map['house_rules'])),
+      pricing: ListingPricing.fromMap(_jsonMap(map['pricing'])),
+      conditions: BookingConditions.fromMap(
+        _jsonMap(map['booking_conditions']),
+      ),
     );
+  }
+
+  /// The three wizard columns are `jsonb`. Supabase hands them back as maps,
+  /// but a row written before the lifecycle migration has `{}` or no key at
+  /// all, so anything that isn't a map becomes null and the value objects fall
+  /// back to their defaults.
+  static Map<String, dynamic>? _jsonMap(dynamic value) {
+    if (value is Map<String, dynamic>) return value;
+    if (value is Map) return value.cast<String, dynamic>();
+    return null;
   }
 
   static ListingType _typeFromString(String? value) {
@@ -106,6 +135,14 @@ class PropertyModel extends Property {
     'available_from': availableFrom,
     'bills_included': billsIncluded,
     'flatmates': flatmates,
+    'status': status.id,
+    'property_type': propertyType.id,
+    'max_guests': maxGuests,
+    'district': district,
+    'contact_phone': contactPhone,
+    'house_rules': rules.toMap(),
+    'pricing': pricing.toMap(),
+    'booking_conditions': conditions.toMap(),
   };
 
   static List<String> _stringList(dynamic value) {

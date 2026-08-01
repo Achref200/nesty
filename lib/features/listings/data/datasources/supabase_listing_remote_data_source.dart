@@ -1,13 +1,15 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../../core/error/exceptions.dart';
+import '../../domain/entities/listing_schema.dart';
 import '../models/property_model.dart';
 import 'listing_remote_data_source.dart';
 
-/// Reads listings from a `properties` table in Supabase.
+/// Reads listings from the shared `listings` table in Supabase.
 ///
-/// Expected columns match [PropertyModel.fromMap]. The `rooms` column is a
-/// jsonb array. Adjust the query to your schema as it evolves.
+/// Expected columns match [PropertyModel.fromMap]. Everything returned here
+/// feeds the traveller-facing feed, so it is filtered to live listings only —
+/// a host's drafts must never reach a seeker.
 class SupabaseListingRemoteDataSource implements ListingRemoteDataSource {
   const SupabaseListingRemoteDataSource(this._client);
 
@@ -27,7 +29,13 @@ class SupabaseListingRemoteDataSource implements ListingRemoteDataSource {
   @override
   Future<List<PropertyModel>> getListings({String? category}) async {
     try {
-      final query = _client.from(_table).select();
+      // `publicVisibleStatuses` carries both 'published' and the pre-migration
+      // 'active'. Filtering on one alone empties the feed on whichever schema
+      // generation the project happens to be on.
+      final query = _client
+          .from(_table)
+          .select()
+          .inFilter('status', publicVisibleStatuses);
       final dbType = _typeByCategory[category];
       final rows = await (dbType == null ? query : query.eq('type', dbType));
       return (rows as List)

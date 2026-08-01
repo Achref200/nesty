@@ -3,10 +3,16 @@ import 'package:flutter/services.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
+import '../../domain/entities/availability.dart';
 
-/// A compact, monochrome month calendar. Marked days carry a small ink dot,
-/// today is outlined, and the selected day fills solid ink. Built in-house to
-/// hold the black/white/grey identity precisely — no third-party theming.
+/// A compact, monochrome month calendar. Today is outlined, the selected day
+/// fills solid ink, and each day carries a small marker for what it's doing.
+/// Built in-house to hold the black/white/grey identity precisely — no
+/// third-party theming.
+///
+/// Pass [states] to get the full availability read (booked / on hold /
+/// blocked), which is what the agency dashboard shows. [marked] stays for the
+/// simpler screens that only care whether *something* is on that day.
 class MonthCalendar extends StatelessWidget {
   const MonthCalendar({
     super.key,
@@ -15,6 +21,7 @@ class MonthCalendar extends StatelessWidget {
     required this.marked,
     required this.onSelect,
     required this.onMonthChanged,
+    this.states,
   });
 
   /// Any day within the month being shown (day component is ignored).
@@ -23,6 +30,9 @@ class MonthCalendar extends StatelessWidget {
   final Set<DateTime> marked;
   final ValueChanged<DateTime> onSelect;
   final ValueChanged<DateTime> onMonthChanged;
+
+  /// Day → what's holding it. Takes precedence over [marked] when present.
+  final Map<DateTime, DayAvailability>? states;
 
   static const _weekdays = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
   static const _months = [
@@ -50,13 +60,19 @@ class MonthCalendar extends StatelessWidget {
       final isToday = day == today;
       final isSelected = selected != null &&
           DateTime(selected!.year, selected!.month, selected!.day) == day;
-      final isMarked = marked.contains(day);
+      // A screen that supplied `states` gets the precise read; everything else
+      // keeps the old on/off dot.
+      final state = states != null
+          ? (states![day] ?? DayAvailability.available)
+          : (marked.contains(day)
+                ? DayAvailability.confirmed
+                : DayAvailability.available);
       cells.add(
         _DayCell(
           day: d,
           isToday: isToday,
           isSelected: isSelected,
-          isMarked: isMarked,
+          state: state,
           onTap: () {
             HapticFeedback.selectionClick();
             onSelect(day);
@@ -126,23 +142,31 @@ class _DayCell extends StatelessWidget {
     required this.day,
     required this.isToday,
     required this.isSelected,
-    required this.isMarked,
+    required this.state,
     required this.onTap,
   });
 
   final int day;
   final bool isToday;
   final bool isSelected;
-  final bool isMarked;
+  final DayAvailability state;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
+    // Three distinguishable markers inside one grey scale: a solid dot for a
+    // booking, a hollow ring while a request is still on hold, and a short bar
+    // for dates the agency closed by hand.
+    final ink = isSelected ? AppColors.onAccent : AppColors.ink;
+    final soft = isSelected ? AppColors.onAccent : AppColors.tertiaryLabel;
+    final taken = state != DayAvailability.available;
+
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
+        curve: Curves.easeOutCubic,
         decoration: BoxDecoration(
           color: isSelected ? AppColors.ink : Colors.transparent,
           shape: BoxShape.circle,
@@ -158,25 +182,60 @@ class _DayCell extends StatelessWidget {
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
-                color: isSelected ? AppColors.onAccent : AppColors.label,
+                // A taken day steps back so the free ones read first.
+                color: isSelected
+                    ? AppColors.onAccent
+                    : (taken ? AppColors.secondaryLabel : AppColors.label),
               ),
             ),
             const SizedBox(height: 2),
-            Container(
-              width: 4,
+            SizedBox(
               height: 4,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: isMarked
-                    ? (isSelected ? AppColors.onAccent : AppColors.ink)
-                    : Colors.transparent,
-              ),
+              child: switch (state) {
+                DayAvailability.available => const SizedBox.shrink(),
+                DayAvailability.confirmed => _Marker(
+                  width: 4,
+                  decoration: BoxDecoration(shape: BoxShape.circle, color: ink),
+                ),
+                DayAvailability.pending => _Marker(
+                  width: 4,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: soft, width: 1),
+                  ),
+                ),
+                DayAvailability.blocked => _Marker(
+                  width: 9,
+                  height: 2,
+                  decoration: BoxDecoration(
+                    color: soft,
+                    borderRadius: BorderRadius.circular(1),
+                  ),
+                ),
+              },
             ),
           ],
         ),
       ),
     );
   }
+}
+
+class _Marker extends StatelessWidget {
+  const _Marker({
+    required this.width,
+    required this.decoration,
+    this.height = 4,
+  });
+
+  final double width;
+  final double height;
+  final Decoration decoration;
+
+  @override
+  Widget build(BuildContext context) => Center(
+    child: Container(width: width, height: height, decoration: decoration),
+  );
 }
 
 class _NavBtn extends StatelessWidget {

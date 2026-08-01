@@ -62,7 +62,7 @@ class MockListingRemoteDataSource implements ListingRemoteDataSource {
           'A calm, light-filled T3 in Les Berges du Lac, two minutes from '
           'Lac 2. Two real bedrooms, a proper dining nook and a bright '
           'kitchinette.',
-      amenities: const ['Wi-Fi', 'Heating', 'Elevator', 'Washer', 'Balcony'],
+      amenities: const ['wifi', 'heating', 'elevator', 'washer', 'balcony'],
       isSuperhost: true,
       availableFrom: 'Aug 1',
       billsIncluded: false,
@@ -94,7 +94,7 @@ class MockListingRemoteDataSource implements ListingRemoteDataSource {
           'A private room in a warm three-person coloc, right by Sahloul. '
           'You\u2019ll share a big kitchen and a water room with two friendly '
           'flatmates in their late twenties. Bills and Wi-Fi are all included.',
-      amenities: const ['Wi-Fi', 'Heating', 'Shared kitchen', 'Bills included'],
+      amenities: const ['wifi', 'heating', 'kitchen', 'hotWater'],
       isSuperhost: false,
       availableFrom: 'Now',
       billsIncluded: true,
@@ -127,7 +127,7 @@ class MockListingRemoteDataSource implements ListingRemoteDataSource {
           'Corniche and the sea. Thoughtful storage, a real desk and a calm '
           'palette \u2014 ideal for a professional or a student who wants to '
           'live well in a small footprint.',
-      amenities: const ['Wi-Fi', 'Heating', 'Kitchenette', 'Desk'],
+      amenities: const ['wifi', 'heating', 'kitchen', 'workspace'],
       isSuperhost: true,
       availableFrom: 'Sep 15',
       billsIncluded: false,

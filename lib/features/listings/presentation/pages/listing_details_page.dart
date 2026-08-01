@@ -19,6 +19,7 @@ import '../../../../core/widgets/neu/neu_surface.dart';
 import '../../../assistant/presentation/widgets/assistant_sheet.dart';
 import '../../../saved/presentation/cubit/saved_cubit.dart';
 import '../../../reservations/presentation/pages/reservation_flow_page.dart';
+import '../../domain/entities/listing_schema.dart';
 import '../../domain/entities/property.dart';
 import '../../domain/entities/trust_info.dart';
 import '../cubit/listing_details_cubit.dart';
@@ -207,6 +208,11 @@ class _Content extends StatelessWidget {
                 ),
                 const SizedBox(height: AppSpacing.xl),
                 FadeSlideIn(
+                  delay: const Duration(milliseconds: 325),
+                  child: _StayTerms(property: property),
+                ),
+                const SizedBox(height: AppSpacing.xl),
+                FadeSlideIn(
                   delay: const Duration(milliseconds: 340),
                   child: NeighborhoodSection(property: property),
                 ),
@@ -231,6 +237,137 @@ class _Content extends StatelessWidget {
   }
 }
 
+/// House rules and booking conditions, exactly as the agency set them in the
+/// dashboard wizard. Before this existed a traveller only found out about the
+/// no-pets rule or the deposit after asking, which is the sort of small
+/// surprise that loses a booking.
+class _StayTerms extends StatelessWidget {
+  const _StayTerms({required this.property});
+
+  final Property property;
+
+  @override
+  Widget build(BuildContext context) {
+    final french = context.isFrench;
+    final theme = Theme.of(context);
+    final rules = property.rules;
+    final conditions = property.conditions;
+    final pricing = property.pricing;
+
+    final lines = <({IconData icon, String text})>[
+      (
+        icon: rules.pets
+            ? Icons.pets_rounded
+            : Icons.do_not_disturb_on_outlined,
+        text: rules.pets
+            ? context.copy('Pets welcome', 'Animaux acceptés')
+            : context.copy('No pets', 'Animaux non admis'),
+      ),
+      (
+        icon: rules.smoking
+            ? Icons.smoking_rooms_rounded
+            : Icons.smoke_free_rounded,
+        text: rules.smoking
+            ? context.copy('Smoking allowed', 'Fumeur autorisé')
+            : context.copy('No smoking', 'Non-fumeur'),
+      ),
+      (
+        icon: rules.party
+            ? Icons.celebration_rounded
+            : Icons.volume_off_rounded,
+        text: rules.party
+            ? context.copy('Events allowed', 'Fêtes autorisées')
+            : context.copy('No parties or events', 'Fêtes non autorisées'),
+      ),
+      if (pricing.minNights > 1)
+        (
+          icon: Icons.nights_stay_outlined,
+          text: context.copy(
+            '${pricing.minNights} nights minimum',
+            '${pricing.minNights} nuits minimum',
+          ),
+        ),
+      (
+        icon: Icons.event_available_outlined,
+        text: conditions.cancellation.blurbFor(french),
+      ),
+      (
+        icon: Icons.account_balance_wallet_outlined,
+        text: conditions.paymentMethods
+            .map((m) => m.labelFor(french))
+            .join(' · '),
+      ),
+      if (conditions.paymentPolicy == PaymentPolicy.mandatoryAdvance &&
+          conditions.advancePct > 0)
+        (
+          icon: Icons.savings_outlined,
+          text: context.copy(
+            '${conditions.advancePct.toStringAsFixed(0)}% deposit required',
+            'Acompte de ${conditions.advancePct.toStringAsFixed(0)} % requis',
+          ),
+        ),
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          context.copy('Good to know', 'Bon à savoir'),
+          style: theme.textTheme.titleMedium,
+        ),
+        const SizedBox(height: AppSpacing.md),
+        NeuSurface(
+          borderRadius: AppRadius.md,
+          padding: const EdgeInsets.symmetric(
+            vertical: AppSpacing.sm,
+            horizontal: AppSpacing.lg,
+          ),
+          child: Column(
+            children: [
+              for (final line in lines)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 9),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(
+                        line.icon,
+                        size: 18,
+                        color: AppColors.textSecondary,
+                      ),
+                      const SizedBox(width: AppSpacing.md),
+                      Expanded(
+                        child: Text(
+                          line.text,
+                          style: const TextStyle(
+                            fontSize: 13.5,
+                            height: 1.35,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        ),
+        if (rules.instructions.trim().isNotEmpty) ...[
+          const SizedBox(height: AppSpacing.md),
+          Text(
+            rules.instructions.trim(),
+            style: const TextStyle(
+              fontSize: 13.5,
+              height: 1.5,
+              color: AppColors.textSecondary,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
 class _Facts extends StatelessWidget {
   const _Facts({required this.property});
   final Property property;
@@ -246,15 +383,27 @@ class _Facts extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
+          // Capacity only shows once the host has actually set it — an empty
+          // slot reading "0 guests" looks broken.
+          if (property.maxGuests > 0) ...[
+            _Fact(
+              Icons.people_outline_rounded,
+              '${property.maxGuests}',
+              context.copy('Guests', 'Voyageurs'),
+            ),
+            _divider(),
+          ],
           _Fact(AppIcons.bed, '${property.bedrooms}', context.copy('Bedrooms', 'Chambres')),
           _divider(),
           _Fact(AppIcons.bath, '${property.bathrooms}', context.copy('Bathrooms', 'Salles de bain')),
-          _divider(),
-          _Fact(
-            AppIcons.area,
-            '${property.areaSqm.toStringAsFixed(0)} m²',
-            context.copy('Area', 'Surface'),
-          ),
+          if (property.areaSqm > 0) ...[
+            _divider(),
+            _Fact(
+              AppIcons.area,
+              '${property.areaSqm.toStringAsFixed(0)} m²',
+              context.copy('Area', 'Surface'),
+            ),
+          ],
         ],
       ),
     );
@@ -299,6 +448,9 @@ class _Amenities extends StatelessWidget {
       spacing: AppSpacing.sm,
       runSpacing: AppSpacing.sm,
       children: [
+        // Amenities come back as canonical ids ('hotWater'), the same ones the
+        // dashboard writes. Translate at the edge so the chip reads properly in
+        // both languages.
         for (final a in amenities)
           NeuSurface(
             borderRadius: AppRadius.pill,
@@ -308,7 +460,7 @@ class _Amenities extends StatelessWidget {
               vertical: AppSpacing.sm,
             ),
             child: Text(
-              a,
+              amenityLabel(a, context.isFrench),
               style: const TextStyle(
                 fontWeight: FontWeight.w500,
                 color: AppColors.textSecondary,
@@ -506,7 +658,7 @@ class _BottomBar extends StatelessWidget {
                   children: [
                     Flexible(
                       child: Text(
-                        formatDinars(property.pricePerMonth),
+                        formatDinars(property.displayPrice),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
@@ -518,7 +670,7 @@ class _BottomBar extends StatelessWidget {
                     ),
                     const SizedBox(width: 3),
                     Text(
-                      context.copy('/ mo', '/ mois'),
+                      '/ ${property.displayPricingModel.unitFor(context.isFrench)}',
                       style: const TextStyle(
                         color: AppColors.secondaryLabel,
                         fontSize: 14,

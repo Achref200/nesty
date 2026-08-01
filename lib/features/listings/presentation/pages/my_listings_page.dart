@@ -5,6 +5,7 @@ import '../../../../app/di/injection.dart';
 import '../../../../app/router/app_routes.dart';
 import '../../../../core/branding/app_icons.dart';
 import '../../../../core/format/money.dart';
+import '../../../../core/localization/app_locale.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/widgets/app_image.dart';
@@ -14,6 +15,7 @@ import '../../../../core/widgets/neu/neu_surface.dart';
 import '../../../reservations/data/reservations_store.dart';
 import '../../../reservations/domain/entities/reservation.dart';
 import '../../data/datasources/host_listings_store.dart';
+import '../../domain/entities/listing_schema.dart';
 import '../../domain/entities/property.dart';
 
 /// Host-only tab. Lists every place the agency has published — from Supabase
@@ -146,11 +148,24 @@ class _ListingRow extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    property.title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.titleMedium,
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          property.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.titleMedium,
+                        ),
+                      ),
+                      // Anything that isn't live is called out — this is the
+                      // only screen where a host sees their own drafts, so the
+                      // difference has to be obvious.
+                      if (!property.status.isLive) ...[
+                        const SizedBox(width: AppSpacing.sm),
+                        _StatusChip(status: property.status),
+                      ],
+                    ],
                   ),
                   const SizedBox(height: 2),
                   Text(
@@ -163,15 +178,15 @@ class _ListingRow extends StatelessWidget {
                   Row(
                     children: [
                       Text(
-                        formatDinars(property.pricePerMonth),
+                        formatDinars(property.displayPrice),
                         style: const TextStyle(
                           fontWeight: FontWeight.w800,
                           fontSize: 14,
                         ),
                       ),
-                      const Text(
-                        ' / mo',
-                        style: TextStyle(
+                      Text(
+                        ' / ${property.displayPricingModel.unitFor(context.isFrench)}',
+                        style: const TextStyle(
                           color: AppColors.secondaryLabel,
                           fontSize: 13,
                         ),
@@ -267,6 +282,34 @@ class _EmptyListings extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Small lifecycle marker on a host's own listing card. Stays in the grey
+/// register — a draft is a quiet state, not an error.
+class _StatusChip extends StatelessWidget {
+  const _StatusChip({required this.status});
+
+  final ListingStatus status;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: AppColors.fill,
+        borderRadius: BorderRadius.circular(AppRadius.pill),
+      ),
+      child: Text(
+        status.labelFor(context.isFrench),
+        style: const TextStyle(
+          fontSize: 10.5,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.2,
+          color: AppColors.secondaryLabel,
         ),
       ),
     );

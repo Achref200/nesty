@@ -24,7 +24,10 @@ class ReservationTile extends StatelessWidget {
   final Reservation reservation;
   final bool manageable;
   final VoidCallback? onConfirm;
-  final VoidCallback? onCancel;
+
+  /// Called with the reason the agency typed. It is never empty — the sheet
+  /// won't submit without one, matching the dashboard.
+  final void Function(String reason)? onCancel;
   final VoidCallback? onComplete;
   final bool showGuest;
 
@@ -46,9 +49,48 @@ class ReservationTile extends StatelessWidget {
     return '$date → ${e.day} ${_months[e.month - 1]} · ${reservation.nights} nights';
   }
 
+  /// "22h left" / "45m left" while the agency's 48 h window is still running.
+  String? get _holdLeft {
+    final left = reservation.remainingHold;
+    if (left == Duration.zero) return null;
+    if (left.inHours >= 1) return '${left.inHours}h left to answer';
+    return '${left.inMinutes}m left to answer';
+  }
+
+  /// Asks for the reason before turning a request down. The dashboard refuses
+  /// to submit without one and the traveller is shown the text, so the phone
+  /// has to ask for it too — otherwise the same action means two different
+  /// things depending on where the agency happens to be standing.
+  Future<void> _askReason(
+    BuildContext context,
+    ReservationStatus status,
+  ) async {
+    final isCancel = status == ReservationStatus.confirmed;
+    final reason = await showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => _ReasonSheet(isCancel: isCancel),
+    );
+    if (reason == null || reason.isEmpty) return;
+    onCancel?.call(reason);
+    if (context.mounted) {
+      AppFeedback.info(
+        context,
+        isCancel ? 'Reservation cancelled' : 'Request declined',
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isVisit = reservation.type == ReservationType.visit;
+    // Read through `effectiveStatus` everywhere: a hold that lapsed minutes ago
+    // is already dead, even though the row still says pending until the
+    // 15-minute sweep catches up.
+    final status = reservation.effectiveStatus;
+    final hold = _holdLeft;
+    final reason = reservation.cancellationReason;
     return NeuSurface(
       borderRadius: AppRadius.md,
       padding: const EdgeInsets.all(AppSpacing.lg),
@@ -76,6 +118,19 @@ class ReservationTile extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    if (reservation.reference != null) ...[
+                      Text(
+                        reservation.reference!,
+                        style: const TextStyle(
+                          fontFamily: 'monospace',
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.4,
+                          color: AppColors.tertiaryLabel,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                    ],
                     Text(
                       reservation.propertyTitle,
                       maxLines: 1,
@@ -107,14 +162,78 @@ class ReservationTile extends StatelessWidget {
                   ],
                 ),
               ),
-              _StatusPill(status: reservation.status),
+              _StatusPill(status: status),
             ],
           ),
-          if (manageable && reservation.status.isActive) ...[
+
+          // The 48 h clock. Shown to both sides — it's the agency's deadline
+          // and the traveller's answer, so hiding it from either is unkind.
+          if (hold != null) ...[
+            const SizedBox(height: AppSpacing.sm),
+            Row(
+              children: [
+                const Icon(
+                  Icons.schedule_rounded,
+                  size: 13,
+                  color: AppColors.tertiaryLabel,
+                ),
+                const SizedBox(width: 5),
+                Text(
+                  hold,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.tertiaryLabel,
+                  ),
+                ),
+              ],
+            ),
+          ],
+
+          // Why it fell through. The dashboard makes the agency write this, so
+          // the traveller should never be left guessing.
+          if (status.isRefusal && reason != null && reason.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.md),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: AppColors.fill,
+                borderRadius: BorderRadius.circular(AppRadius.sm),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    status == ReservationStatus.rejected
+                        ? 'Why it was declined'
+                        : 'Why it was cancelled',
+                    style: const TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.6,
+                      color: AppColors.tertiaryLabel,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    reason,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      height: 1.35,
+                      color: AppColors.secondaryLabel,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+
+          if (manageable && status.isActive) ...[
             const SizedBox(height: AppSpacing.md),
             Row(
               children: [
-                if (reservation.status == ReservationStatus.pending)
+                if (status == ReservationStatus.pending)
                   Expanded(
                     child: _Action(
                       label: 'Confirm',
@@ -131,7 +250,7 @@ class ReservationTile extends StatelessWidget {
                             },
                     ),
                   ),
-                if (reservation.status == ReservationStatus.confirmed)
+                if (status == ReservationStatus.confirmed)
                   Expanded(
                     child: _Action(
                       label: 'Mark done',
@@ -151,15 +270,14 @@ class ReservationTile extends StatelessWidget {
                 const SizedBox(width: AppSpacing.sm),
                 Expanded(
                   child: _Action(
-                    label: 'Decline',
+                    label: status == ReservationStatus.confirmed
+                        ? 'Cancel'
+                        : 'Decline',
                     icon: AppIcons.close,
                     filled: false,
                     onTap: onCancel == null
                         ? null
-                        : () {
-                            onCancel!();
-                            AppFeedback.info(context, 'Reservation cancelled');
-                          },
+                        : () => _askReason(context, status),
                   ),
                 ),
               ],
@@ -171,16 +289,148 @@ class ReservationTile extends StatelessWidget {
   }
 }
 
+/// Bottom sheet that collects the mandatory decline/cancel reason. Kept in this
+/// file because it exists only to serve the tile's Decline button.
+class _ReasonSheet extends StatefulWidget {
+  const _ReasonSheet({required this.isCancel});
+
+  final bool isCancel;
+
+  @override
+  State<_ReasonSheet> createState() => _ReasonSheetState();
+}
+
+class _ReasonSheetState extends State<_ReasonSheet> {
+  final _controller = TextEditingController();
+  bool _touched = false;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final value = _controller.text.trim();
+    setState(() => _touched = true);
+    if (value.isEmpty) return;
+    Navigator.of(context).pop(value);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final empty = _touched && _controller.text.trim().isEmpty;
+    return Padding(
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
+      child: Container(
+        decoration: const BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(AppRadius.lg),
+          ),
+        ),
+        padding: const EdgeInsets.all(AppSpacing.xl),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 38,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.separator,
+                  borderRadius: BorderRadius.circular(AppRadius.pill),
+                ),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            Text(
+              widget.isCancel
+                  ? 'Cancel this reservation'
+                  : 'Decline this request',
+              style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'The traveller sees this, so a short honest line goes a long way.',
+              style: TextStyle(
+                fontSize: 13,
+                height: 1.4,
+                color: AppColors.secondaryLabel,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            TextField(
+              controller: _controller,
+              autofocus: true,
+              maxLines: 3,
+              maxLength: 300,
+              textCapitalization: TextCapitalization.sentences,
+              onChanged: (_) => setState(() {}),
+              decoration: InputDecoration(
+                hintText: widget.isCancel
+                    ? 'The place is no longer available for these dates…'
+                    : 'Already booked for these dates…',
+                filled: true,
+                fillColor: AppColors.fill,
+                errorText: empty ? 'A reason is required.' : null,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.sm),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Row(
+              children: [
+                Expanded(
+                  child: TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('Keep it'),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: FilledButton(
+                    onPressed: _submit,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.ink,
+                      foregroundColor: AppColors.onAccent,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(AppRadius.sm),
+                      ),
+                    ),
+                    child: Text(widget.isCancel ? 'Cancel stay' : 'Decline'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _StatusPill extends StatelessWidget {
   const _StatusPill({required this.status});
   final ReservationStatus status;
 
   @override
   Widget build(BuildContext context) {
+    // Confirmed is the only state that earns the solid ink pill. Everything
+    // that's over — declined, expired, cancelled — settles back into the quiet
+    // greys so a busy list still reads at a glance.
     final (bg, fg) = switch (status) {
       ReservationStatus.confirmed => (AppColors.ink, AppColors.onAccent),
       ReservationStatus.pending => (AppColors.accentSoft, AppColors.ink),
       ReservationStatus.completed => (AppColors.fill, AppColors.secondaryLabel),
+      ReservationStatus.rejected => (AppColors.fill, AppColors.tertiaryLabel),
+      ReservationStatus.expired => (AppColors.fill, AppColors.tertiaryLabel),
       ReservationStatus.cancelled => (AppColors.fill, AppColors.tertiaryLabel),
     };
     return Container(

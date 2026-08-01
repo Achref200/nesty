@@ -14,6 +14,7 @@ import '../../../../core/widgets/motion/typing_text.dart';
 import '../../../../core/widgets/neu/neu_button.dart';
 import '../../../../core/widgets/neu/neu_field.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
+import '../../../listings/domain/entities/listing_schema.dart';
 import '../../../listings/domain/entities/property.dart';
 import '../../data/reservations_store.dart';
 import '../../domain/entities/reservation.dart';
@@ -55,9 +56,23 @@ class _ReservationFlowState extends State<_ReservationFlow> {
 
   static const _slots = ['09:00', '11:00', '14:00', '16:00', '18:00'];
 
-  double get _nightly => widget.property.pricePerMonth / 30;
+  /// A nightly figure derived from whatever period the host actually priced in.
+  /// Dividing everything by 30 quoted a nightly-priced place at a thirtieth of
+  /// its real rate.
+  double get _nightly {
+    final p = widget.property;
+    return switch (p.displayPricingModel) {
+      PricingModel.night => p.displayPrice,
+      PricingModel.week => p.displayPrice / 7,
+      PricingModel.month => p.displayPrice / 30,
+    };
+  }
+
   int get _nights => _range == null ? 0 : _range!.duration.inDays;
-  double get _total => _nights * _nightly;
+
+  /// What the traveller is quoted. Extra fees ride along on top of the nights,
+  /// exactly as the dashboard totals them.
+  double get _total => (_nights * _nightly) + widget.property.pricing.extraFee;
 
   @override
   void dispose() {
@@ -130,7 +145,24 @@ class _ReservationFlowState extends State<_ReservationFlow> {
       end = _range!.end;
     }
 
-    final error = await sl<ReservationsStore>().add(
+    final store = sl<ReservationsStore>();
+
+    // Catch a clash before it reaches Postgres. The exclusion constraint is the
+    // real guarantee, but its error message is unreadable — this turns the
+    // common case into a sentence the traveller can act on.
+    if (!store.isRangeFree(widget.property.id, start, end)) {
+      HapticFeedback.mediumImpact();
+      setState(() {
+        _submitting = false;
+        _error = context.copy(
+          'Those dates have just been taken. Pick another window.',
+          'Ces dates viennent d\'être prises. Choisissez une autre période.',
+        );
+      });
+      return;
+    }
+
+    final error = await store.add(
       Reservation(
         id: 'res-${DateTime.now().millisecondsSinceEpoch}',
         propertyId: widget.property.id,

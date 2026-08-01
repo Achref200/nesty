@@ -142,8 +142,15 @@ class _ReservationsOverview extends StatelessWidget {
                     showGuest: true,
                     onConfirm: () =>
                         store.setStatus(r.id, ReservationStatus.confirmed),
-                    onCancel: () =>
-                        store.setStatus(r.id, ReservationStatus.cancelled),
+                    // A pending request is declined, a confirmed one is
+                    // cancelled — same two outcomes the dashboard offers.
+                    onCancel: (reason) => store.setStatus(
+                      r.id,
+                      r.effectiveStatus == ReservationStatus.confirmed
+                          ? ReservationStatus.cancelled
+                          : ReservationStatus.rejected,
+                      reason: reason,
+                    ),
                     onComplete: () =>
                         store.setStatus(r.id, ReservationStatus.completed),
                   ),

@@ -34,11 +34,13 @@ class MyTripsPage extends StatelessWidget {
             listenable: store,
             builder: (context, _) {
               final mine = store.forGuest(guestId);
-              final upcoming =
-                  mine.where((r) => r.status.isActive && r.isUpcoming).toList();
-              final past = mine
-                  .where((r) => !(r.status.isActive && r.isUpcoming))
-                  .toList()
+              // `effectiveStatus`, not `status`: a request whose 48 h hold ran
+              // out is over, and leaving it under "Upcoming" reads as though
+              // the agency might still say yes.
+              bool live(Reservation r) =>
+                  r.effectiveStatus.isActive && r.isUpcoming;
+              final upcoming = mine.where(live).toList();
+              final past = mine.where((r) => !live(r)).toList()
                 ..sort((a, b) => b.start.compareTo(a.start));
 
               if (mine.isEmpty) {
@@ -64,9 +66,12 @@ class MyTripsPage extends StatelessWidget {
                           child: ReservationTile(
                             reservation: r,
                             manageable: true,
-                            onCancel: () => store.setStatus(
+                            // The traveller withdrawing their own booking. The
+                            // agency reads the reason on their side.
+                            onCancel: (reason) => store.setStatus(
                               r.id,
                               ReservationStatus.cancelled,
+                              reason: reason,
                             ),
                             // Seekers only cancel; hosts confirm/complete.
                             onConfirm: null,

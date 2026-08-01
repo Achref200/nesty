@@ -8,6 +8,7 @@ import '../../../../core/widgets/ios/ios_sliver_scaffold.dart';
 import '../../../../core/widgets/motion/fade_slide_in.dart';
 import '../../../../core/widgets/neu/neu_surface.dart';
 import '../../data/reservations_store.dart';
+import '../../domain/entities/availability.dart';
 import '../../domain/entities/reservation.dart';
 import '../widgets/month_calendar.dart';
 import '../widgets/reservation_tile.dart';
@@ -50,6 +51,7 @@ class _HostCalendarPageState extends State<HostCalendarPage> {
             listenable: store,
             builder: (context, _) {
               final marked = store.markedDays(_month.year, _month.month);
+              final states = store.calendarAcrossListings();
               final dayItems = store.onDay(_selected);
               return Padding(
                 padding: const EdgeInsets.fromLTRB(
@@ -65,12 +67,20 @@ class _HostCalendarPageState extends State<HostCalendarPage> {
                       child: NeuSurface(
                         borderRadius: AppRadius.lg,
                         padding: const EdgeInsets.all(AppSpacing.lg),
-                        child: MonthCalendar(
-                          month: _month,
-                          selected: _selected,
-                          marked: marked,
-                          onSelect: (d) => setState(() => _selected = d),
-                          onMonthChanged: (m) => setState(() => _month = m),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            MonthCalendar(
+                              month: _month,
+                              selected: _selected,
+                              marked: marked,
+                              states: states,
+                              onSelect: (d) => setState(() => _selected = d),
+                              onMonthChanged: (m) => setState(() => _month = m),
+                            ),
+                            const SizedBox(height: AppSpacing.lg),
+                            const _CalendarLegend(),
+                          ],
                         ),
                       ),
                     ),
@@ -83,7 +93,8 @@ class _HostCalendarPageState extends State<HostCalendarPage> {
                         ),
                         const SizedBox(width: AppSpacing.sm),
                         if (dayItems.any(
-                          (r) => r.status == ReservationStatus.confirmed,
+                          (r) =>
+                              r.effectiveStatus == ReservationStatus.confirmed,
                         ))
                           Container(
                             padding: const EdgeInsets.symmetric(
@@ -120,9 +131,12 @@ class _HostCalendarPageState extends State<HostCalendarPage> {
                               r.id,
                               ReservationStatus.confirmed,
                             ),
-                            onCancel: () => store.setStatus(
+                            onCancel: (reason) => store.setStatus(
                               r.id,
-                              ReservationStatus.cancelled,
+                              r.effectiveStatus == ReservationStatus.confirmed
+                                  ? ReservationStatus.cancelled
+                                  : ReservationStatus.rejected,
+                              reason: reason,
                             ),
                             onComplete: () => store.setStatus(
                               r.id,
@@ -135,6 +149,82 @@ class _HostCalendarPageState extends State<HostCalendarPage> {
                 ),
               );
             },
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Explains the three markers under the month grid. Without it the hollow ring
+/// and the little bar are just noise.
+class _CalendarLegend extends StatelessWidget {
+  const _CalendarLegend();
+
+  @override
+  Widget build(BuildContext context) {
+    final french = context.isFrench;
+    return Wrap(
+      spacing: AppSpacing.lg,
+      runSpacing: AppSpacing.sm,
+      children: [
+        _LegendItem(
+          label: DayAvailability.confirmed.labelFor(french),
+          marker: Container(
+            width: 6,
+            height: 6,
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+              color: AppColors.ink,
+            ),
+          ),
+        ),
+        _LegendItem(
+          label: DayAvailability.pending.labelFor(french),
+          marker: Container(
+            width: 6,
+            height: 6,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: AppColors.tertiaryLabel, width: 1.2),
+            ),
+          ),
+        ),
+        _LegendItem(
+          label: DayAvailability.blocked.labelFor(french),
+          marker: Container(
+            width: 11,
+            height: 2.5,
+            decoration: BoxDecoration(
+              color: AppColors.tertiaryLabel,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _LegendItem extends StatelessWidget {
+  const _LegendItem({required this.label, required this.marker});
+
+  final String label;
+  final Widget marker;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SizedBox(width: 12, child: Center(child: marker)),
+        const SizedBox(width: 6),
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 11.5,
+            fontWeight: FontWeight.w600,
+            color: AppColors.secondaryLabel,
           ),
         ),
       ],

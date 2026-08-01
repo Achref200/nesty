@@ -13,6 +13,7 @@ import '../../../../core/widgets/app_image.dart';
 import '../../../../core/widgets/motion/parallax_image.dart';
 import '../../../../core/widgets/neu/neu_tappable.dart';
 import '../../../saved/presentation/cubit/saved_cubit.dart';
+import '../../domain/entities/listing_schema.dart';
 import '../../domain/entities/property.dart';
 import '../../domain/entities/trust_info.dart';
 import 'trust_badge.dart';
@@ -115,13 +116,15 @@ class _PropertyCardState extends State<PropertyCard> {
                   textBaseline: TextBaseline.alphabetic,
                   children: [
                     Text(
-                      formatDinars(property.pricePerMonth),
+                      formatDinars(property.displayPrice),
                       style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w800,
                       ),
                     ),
+                    // The period comes from the host's own pricing model — a
+                    // nightly rate shown as "/ month" is a tenfold lie.
                     Text(
-                      context.copy(' / month', ' / mois'),
+                      ' / ${property.displayPricingModel.unitFor(context.isFrench)}',
                       style: theme.textTheme.bodyMedium,
                     ),
                   ],
@@ -136,7 +139,7 @@ class _PropertyCardState extends State<PropertyCard> {
                       filled: true,
                     ),
                     for (final t in property.tags.take(2))
-                      _MiniTag(_prettyTag(t)),
+                      _MiniTag(_tagLabel(t, context.isFrench)),
                   ],
                 ),
               ],
@@ -148,7 +151,11 @@ class _PropertyCardState extends State<PropertyCard> {
   }
 }
 
-String _prettyTag(String t) {
+/// Canonical tags get their proper translated name; anything older that
+/// predates the shared vocabulary is just tidied up rather than dropped.
+String _tagLabel(String t, bool french) {
+  final label = listingTagLabel(t, french);
+  if (label != t) return label;
   final s = t.replaceAll('-', ' ').replaceAll('_', ' ');
   return s.isEmpty ? s : '${s[0].toUpperCase()}${s.substring(1)}';
 }

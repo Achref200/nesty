@@ -19,6 +19,7 @@ class NeuField extends StatefulWidget {
     this.onSubmitted,
     this.autofillHints,
     this.textCapitalization = TextCapitalization.none,
+    this.maxLines = 1,
   });
 
   final String placeholder;
@@ -30,6 +31,10 @@ class NeuField extends StatefulWidget {
   final ValueChanged<String>? onSubmitted;
   final Iterable<String>? autofillHints;
   final TextCapitalization textCapitalization;
+
+  /// Set above 1 for free-text boxes like a description. Ignored while
+  /// [obscureText] is on — Flutter only allows a single line there.
+  final int maxLines;
 
   @override
   State<NeuField> createState() => _NeuFieldState();
@@ -47,6 +52,7 @@ class _NeuFieldState extends State<NeuField> {
       child: TextField(
         controller: widget.controller,
         obscureText: _obscured,
+        maxLines: _obscured ? 1 : widget.maxLines,
         keyboardType: widget.keyboardType,
         textInputAction: widget.textInputAction,
         textCapitalization: widget.textCapitalization,

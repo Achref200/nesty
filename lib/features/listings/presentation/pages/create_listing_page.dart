@@ -19,6 +19,7 @@ import '../../../../core/widgets/neu/neu_icon_button.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
 import '../../data/datasources/local_listings_store.dart';
 import '../../data/models/property_model.dart';
+import '../../domain/entities/listing_schema.dart';
 import '../../domain/entities/property.dart';
 
 /// A publish failure carrying a message that's safe to show the host.
@@ -44,6 +45,9 @@ class _CreateListingPageState extends State<CreateListingPage> {
   final _address = TextEditingController();
   final _price = TextEditingController();
   final _description = TextEditingController();
+  final _district = TextEditingController();
+  final _phone = TextEditingController();
+  final _instructions = TextEditingController();
 
   ListingType _type = ListingType.entirePlace;
   RentalTerm _term = RentalTerm.longTerm;
@@ -52,7 +56,24 @@ class _CreateListingPageState extends State<CreateListingPage> {
   int _bathrooms = 1;
   int _area = 45;
   int _cover = 0;
-  final Set<String> _amenities = {'Wi-Fi'};
+
+  /// Canonical ids, not display strings — the dashboard reads these back and
+  /// only understands the ids in `listing_schema.dart`.
+  final Set<String> _amenities = {...defaultAmenityIds};
+  final Set<String> _tags = {};
+
+  // The rest of what the agency wizard collects, so a listing created on a
+  // phone is indistinguishable from one created on the web.
+  PropertyType _propertyType = PropertyType.apartment;
+  int _maxGuests = 2;
+  PricingModel _pricingModel = PricingModel.month;
+  int _minNights = 1;
+  CancellationPolicy _cancellation = CancellationPolicy.flexible;
+  final Set<PaymentMethod> _paymentMethods = {PaymentMethod.cash};
+  PaymentPolicy _paymentPolicy = PaymentPolicy.optionalAdvance;
+  bool _allowPets = false;
+  bool _allowSmoking = false;
+  bool _allowParties = false;
   final List<String> _photos = []; // local file paths the host imported
   final ImagePicker _picker = ImagePicker();
   bool _submitting = false;
@@ -70,19 +91,6 @@ class _CreateListingPageState extends State<CreateListingPage> {
     'https://images.unsplash.com/photo-1505691938895-1758d7feb511?w=1200&q=80',
   ];
 
-  static const _allAmenities = [
-    'Wi-Fi',
-    'Heating',
-    'Air-con',
-    'Elevator',
-    'Washer',
-    'Balcony',
-    'Parking',
-    'Kitchenette',
-    'Desk',
-    'Bills included',
-  ];
-
   @override
   void dispose() {
     _title.dispose();
@@ -90,6 +98,9 @@ class _CreateListingPageState extends State<CreateListingPage> {
     _address.dispose();
     _price.dispose();
     _description.dispose();
+    _district.dispose();
+    _phone.dispose();
+    _instructions.dispose();
     super.dispose();
   }
 
@@ -109,8 +120,22 @@ class _CreateListingPageState extends State<CreateListingPage> {
     final price = double.tryParse(_price.text.trim());
     if (price == null || price <= 0) {
       return context.copy(
-        'Enter a monthly price in DT.',
-        'Saisissez un prix mensuel en DT.',
+        'Enter a price in DT.',
+        'Saisissez un prix en DT.',
+      );
+    }
+    // Same check the dashboard runs — eight local digits, +216 optional.
+    final phone = _phone.text.trim();
+    if (phone.isNotEmpty && !isValidTunisianPhone(phone)) {
+      return context.copy(
+        'That contact number doesn\'t look right.',
+        'Ce numéro de contact semble incorrect.',
+      );
+    }
+    if (_paymentMethods.isEmpty) {
+      return context.copy(
+        'Pick at least one payment method.',
+        'Choisissez au moins un mode de paiement.',
       );
     }
     return null;
@@ -284,10 +309,34 @@ class _CreateListingPageState extends State<CreateListingPage> {
           ? 'A new place on Nesty.'
           : _description.text.trim(),
       amenities: _amenities.toList(),
+      tags: _tags.toList(),
       isSuperhost: false,
       availableFrom: 'Now',
-      billsIncluded: _amenities.contains('Bills included'),
+      billsIncluded: false,
       flatmates: _type == ListingType.sharedRoom ? 2 : 0,
+      // Published straight away: a phone listing goes live, it doesn't sit in
+      // the dashboard's draft queue.
+      status: ListingStatus.published,
+      propertyType: _propertyType,
+      maxGuests: _maxGuests,
+      district: _district.text.trim().isEmpty ? null : _district.text.trim(),
+      contactPhone: _phone.text.trim().isEmpty ? null : _phone.text.trim(),
+      rules: HouseRules(
+        pets: _allowPets,
+        smoking: _allowSmoking,
+        party: _allowParties,
+        instructions: _instructions.text.trim(),
+      ),
+      pricing: ListingPricing(
+        model: _pricingModel,
+        amount: double.parse(_price.text.trim()),
+        minNights: _minNights,
+      ),
+      conditions: BookingConditions(
+        cancellation: _cancellation,
+        paymentMethods: _paymentMethods.toList(),
+        paymentPolicy: _paymentPolicy,
+      ),
     );
   }
 
@@ -398,6 +447,16 @@ class _CreateListingPageState extends State<CreateListingPage> {
                   ),
                   const SizedBox(height: AppSpacing.md),
                   NeuField(
+                    controller: _district,
+                    placeholder: context.copy(
+                      'Neighbourhood (optional) — e.g. Khezama',
+                      'Quartier (facultatif) — ex. Khezama',
+                    ),
+                    icon: Icons.explore_outlined,
+                    textInputAction: TextInputAction.next,
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  NeuField(
                     controller: _address,
                     placeholder: context.copy(
                       'Street address (optional)',
@@ -405,6 +464,33 @@ class _CreateListingPageState extends State<CreateListingPage> {
                     ),
                     icon: Icons.signpost_outlined,
                     textInputAction: TextInputAction.next,
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  NeuField(
+                    controller: _phone,
+                    placeholder: context.copy(
+                      'Contact number — e.g. +216 20 000 000',
+                      'Numéro de contact — ex. +216 20 000 000',
+                    ),
+                    icon: Icons.call_outlined,
+                    keyboardType: TextInputType.phone,
+                    textInputAction: TextInputAction.next,
+                  ),
+                  const SizedBox(height: AppSpacing.xl),
+
+                  _Label(context.copy('Property type', 'Type de bien')),
+                  const SizedBox(height: AppSpacing.sm),
+                  Wrap(
+                    spacing: AppSpacing.sm,
+                    runSpacing: AppSpacing.sm,
+                    children: [
+                      for (final t in PropertyType.values)
+                        _SelectChip(
+                          label: t.labelFor(context.isFrench),
+                          selected: _propertyType == t,
+                          onTap: () => setState(() => _propertyType = t),
+                        ),
+                    ],
                   ),
                   const SizedBox(height: AppSpacing.xl),
 
@@ -499,17 +585,51 @@ class _CreateListingPageState extends State<CreateListingPage> {
 
                   _Label(context.copy('Price & size', 'Prix & surface')),
                   const SizedBox(height: AppSpacing.sm),
+                  // The period has to travel with the number. A bare "180" is
+                  // meaningless to whoever reads the row next.
+                  Row(
+                    children: [
+                      for (final m in PricingModel.values) ...[
+                        Expanded(
+                          child: _SelectChip(
+                            label: m.labelFor(context.isFrench),
+                            selected: _pricingModel == m,
+                            onTap: () => setState(() => _pricingModel = m),
+                          ),
+                        ),
+                        if (m != PricingModel.values.last)
+                          const SizedBox(width: AppSpacing.sm),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.md),
                   NeuField(
                     controller: _price,
                     placeholder: context.copy(
-                      'Monthly price in DT',
-                      'Prix mensuel en DT',
+                      'Price in DT per ${_pricingModel.unitFor(false)}',
+                      'Prix en DT par ${_pricingModel.unitFor(true)}',
                     ),
                     icon: Icons.payments_outlined,
                     keyboardType: TextInputType.number,
                     textInputAction: TextInputAction.next,
                   ),
                   const SizedBox(height: AppSpacing.md),
+                  _Stepper(
+                    label: context.copy('Sleeps', 'Couchages'),
+                    value: _maxGuests,
+                    min: 1,
+                    onChanged: (v) => setState(() => _maxGuests = v),
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  if (_pricingModel == PricingModel.night) ...[
+                    _Stepper(
+                      label: context.copy('Minimum nights', 'Nuits minimum'),
+                      value: _minNights,
+                      min: 1,
+                      onChanged: (v) => setState(() => _minNights = v),
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                  ],
                   _Stepper(
                     label: context.copy('Bedrooms', 'Chambres'),
                     value: _bedrooms,
@@ -539,15 +659,123 @@ class _CreateListingPageState extends State<CreateListingPage> {
                     spacing: AppSpacing.sm,
                     runSpacing: AppSpacing.sm,
                     children: [
-                      for (final a in _allAmenities)
+                      for (final id in amenityIds)
                         _SelectChip(
-                          label: a,
-                          selected: _amenities.contains(a),
+                          label: amenityLabel(id, context.isFrench),
+                          selected: _amenities.contains(id),
                           onTap: () => setState(() {
-                            _amenities.contains(a)
-                                ? _amenities.remove(a)
-                                : _amenities.add(a);
+                            _amenities.contains(id)
+                                ? _amenities.remove(id)
+                                : _amenities.add(id);
                           }),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.xl),
+
+                  _Label(context.copy('Highlights', 'Points forts')),
+                  const SizedBox(height: AppSpacing.sm),
+                  Wrap(
+                    spacing: AppSpacing.sm,
+                    runSpacing: AppSpacing.sm,
+                    children: [
+                      for (final id in listingTagIds)
+                        _SelectChip(
+                          label: listingTagLabel(id, context.isFrench),
+                          selected: _tags.contains(id),
+                          onTap: () => setState(() {
+                            _tags.contains(id)
+                                ? _tags.remove(id)
+                                : _tags.add(id);
+                          }),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.xl),
+
+                  _Label(context.copy('House rules', 'Règles du logement')),
+                  const SizedBox(height: AppSpacing.sm),
+                  _RuleSwitch(
+                    label: context.copy('Pets allowed', 'Animaux acceptés'),
+                    value: _allowPets,
+                    onChanged: (v) => setState(() => _allowPets = v),
+                  ),
+                  _RuleSwitch(
+                    label: context.copy('Smoking allowed', 'Fumeur autorisé'),
+                    value: _allowSmoking,
+                    onChanged: (v) => setState(() => _allowSmoking = v),
+                  ),
+                  _RuleSwitch(
+                    label: context.copy(
+                      'Parties & events allowed',
+                      'Fêtes & événements autorisés',
+                    ),
+                    value: _allowParties,
+                    onChanged: (v) => setState(() => _allowParties = v),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  NeuField(
+                    controller: _instructions,
+                    maxLines: 2,
+                    placeholder: context.copy(
+                      'Anything else guests should know…',
+                      'Autre chose à savoir pour les voyageurs…',
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.xl),
+
+                  _Label(
+                    context.copy('Cancellation policy', 'Politique d\'annulation'),
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  Wrap(
+                    spacing: AppSpacing.sm,
+                    runSpacing: AppSpacing.sm,
+                    children: [
+                      for (final p in CancellationPolicy.values)
+                        _SelectChip(
+                          label: p.labelFor(context.isFrench),
+                          selected: _cancellation == p,
+                          onTap: () => setState(() => _cancellation = p),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.xl),
+
+                  _Label(context.copy('Payment accepted', 'Paiement accepté')),
+                  const SizedBox(height: AppSpacing.sm),
+                  Wrap(
+                    spacing: AppSpacing.sm,
+                    runSpacing: AppSpacing.sm,
+                    children: [
+                      for (final m in PaymentMethod.values)
+                        _SelectChip(
+                          label: m.labelFor(context.isFrench),
+                          selected: _paymentMethods.contains(m),
+                          // At least one method has to stay on, mirroring the
+                          // dashboard's `paymentMethodRequired` rule.
+                          onTap: () => setState(() {
+                            if (_paymentMethods.contains(m)) {
+                              if (_paymentMethods.length > 1) {
+                                _paymentMethods.remove(m);
+                              }
+                            } else {
+                              _paymentMethods.add(m);
+                            }
+                          }),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  Wrap(
+                    spacing: AppSpacing.sm,
+                    runSpacing: AppSpacing.sm,
+                    children: [
+                      for (final p in PaymentPolicy.values)
+                        _SelectChip(
+                          label: p.labelFor(context.isFrench),
+                          selected: _paymentPolicy == p,
+                          onTap: () => setState(() => _paymentPolicy = p),
                         ),
                     ],
                   ),
@@ -935,12 +1163,58 @@ class _SelectChip extends StatelessWidget {
         ),
         child: Text(
           label,
+          // Centred so the chip still reads right when it's stretched inside an
+          // Expanded row rather than sized to its own text.
+          textAlign: TextAlign.center,
           style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w600,
             color: selected ? AppColors.onAccent : AppColors.label,
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// One house rule, as a plain labelled toggle. Deliberately quieter than a chip
+/// row — these are answers to yes/no questions, not choices to browse.
+class _RuleSwitch extends StatelessWidget {
+  const _RuleSwitch({
+    required this.label,
+    required this.value,
+    required this.onChanged,
+  });
+
+  final String label;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: AppColors.label,
+              ),
+            ),
+          ),
+          Switch.adaptive(
+            value: value,
+            activeColor: AppColors.ink,
+            onChanged: (v) {
+              HapticFeedback.selectionClick();
+              onChanged(v);
+            },
+          ),
+        ],
       ),
     );
   }

@@ -1,5 +1,7 @@
 import 'package:equatable/equatable.dart';
 
+import 'listing_schema.dart';
+
 /// A property/colocation listing.
 enum ListingType { entirePlace, privateRoom, sharedRoom }
 
@@ -85,6 +87,14 @@ class Property extends Equatable {
     this.availableFrom,
     this.billsIncluded = false,
     this.flatmates = 0,
+    this.status = ListingStatus.published,
+    this.propertyType = PropertyType.apartment,
+    this.maxGuests = 0,
+    this.district,
+    this.contactPhone,
+    this.rules = const HouseRules(),
+    this.pricing = const ListingPricing(),
+    this.conditions = const BookingConditions(),
   });
 
   final String id;
@@ -126,6 +136,31 @@ class Property extends Equatable {
   final bool billsIncluded;
   final int flatmates;
 
+  /// Everything below is written by the agency wizard on the web dashboard and
+  /// read straight back here — see `listing_schema.dart` for why the ids have
+  /// to stay in step.
+
+  /// Lifecycle state. Travellers only ever see [ListingStatus.published]; the
+  /// host area is the one place drafts show up.
+  final ListingStatus status;
+
+  /// The kind of building. Independent of [type], which is how much of it you
+  /// rent.
+  final PropertyType propertyType;
+
+  /// Sleeping capacity. 0 when the host hasn't filled it in yet.
+  final int maxGuests;
+
+  /// Neighbourhood inside the city, e.g. "Khezama" in Sousse.
+  final String? district;
+
+  /// Who the traveller reaches about this specific place.
+  final String? contactPhone;
+
+  final HouseRules rules;
+  final ListingPricing pricing;
+  final BookingConditions conditions;
+
   Property copyWith({bool? isFavorite}) {
     return Property(
       id: id,
@@ -155,8 +190,25 @@ class Property extends Equatable {
       availableFrom: availableFrom,
       billsIncluded: billsIncluded,
       flatmates: flatmates,
+      status: status,
+      propertyType: propertyType,
+      maxGuests: maxGuests,
+      district: district,
+      contactPhone: contactPhone,
+      rules: rules,
+      pricing: pricing,
+      conditions: conditions,
     );
   }
+
+  /// The nightly/weekly/monthly figure the host actually set, falling back to
+  /// the legacy `price_per_month` column for rows created before the wizard.
+  double get displayPrice =>
+      pricing.amount > 0 ? pricing.amount : pricePerMonth;
+
+  /// Period that [displayPrice] is quoted in.
+  PricingModel get displayPricingModel =>
+      pricing.amount > 0 ? pricing.model : PricingModel.month;
 
   @override
   List<Object?> get props => [id, isFavorite];
