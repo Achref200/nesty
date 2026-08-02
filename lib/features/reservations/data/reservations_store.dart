@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../core/error/db_error_messages.dart';
 import '../../../core/services/local_store.dart';
 import '../../../core/services/supabase_service.dart';
 import '../domain/entities/availability.dart';
@@ -290,7 +291,9 @@ class ReservationsStore extends ChangeNotifier {
         await load();
         return null;
       } on PostgrestException catch (e) {
-        return e.message;
+        // The exclusion constraint is the likeliest failure here — someone
+        // else's request landed on the same nights a moment earlier.
+        return describeDbError(e.message);
       } catch (_) {
         return 'We couldn\'t send your request. Check your connection and try again.';
       }
@@ -305,7 +308,11 @@ class ReservationsStore extends ChangeNotifier {
   /// Moves a reservation to [status]. [reason] is required whenever the agency
   /// turns a request down or cancels a confirmed stay — the dashboard enforces
   /// the same rule, and the traveller is shown whatever is written here.
-  Future<void> setStatus(
+  ///
+  /// Returns `null` on success, or a sentence to put in front of the user.
+  /// This used to swallow every failure and return void, so the screen said
+  /// "Reservation confirmed" whether or not anything had been written.
+  Future<String?> setStatus(
     String id,
     ReservationStatus status, {
     String? reason,
@@ -319,31 +326,45 @@ class ReservationsStore extends ChangeNotifier {
         }
         await _client.from('reservations').update(patch).eq('id', id);
         await load();
-      } catch (_) {}
-      return;
+        return null;
+      } on PostgrestException catch (e) {
+        return describeDbError(e.message);
+      } catch (_) {
+        return _offlineMessage;
+      }
     }
     final index = _items.indexWhere((r) => r.id == id);
-    if (index == -1) return;
+    if (index == -1) return 'That reservation is no longer here.';
     _items[index] = _items[index].copyWith(
       status: status,
       cancellationReason: trimmed,
     );
     await _persist();
     notifyListeners();
+    return null;
   }
 
-  Future<void> remove(String id) async {
+  /// Returns `null` on success, or a message explaining why it stayed.
+  Future<String?> remove(String id) async {
     if (_remote) {
       try {
         await _client.from('reservations').delete().eq('id', id);
         await load();
-      } catch (_) {}
-      return;
+        return null;
+      } on PostgrestException catch (e) {
+        return describeDbError(e.message);
+      } catch (_) {
+        return _offlineMessage;
+      }
     }
     _items.removeWhere((r) => r.id == id);
     await _persist();
     notifyListeners();
+    return null;
   }
+
+  static const _offlineMessage =
+      'We couldn\'t reach Nesty. Check your connection and try again.';
 
   Future<void> _persist() => LocalStore.instance.setJsonList(
     _key,

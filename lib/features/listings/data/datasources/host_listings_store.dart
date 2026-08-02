@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../../core/error/db_error_messages.dart';
 import '../../../../core/services/supabase_service.dart';
 import '../../domain/entities/property.dart';
 import '../models/property_model.dart';
@@ -51,16 +53,28 @@ class HostListingsStore extends ChangeNotifier {
     }
   }
 
-  Future<void> remove(String id) async {
+  /// Deletes a listing. Returns `null` on success, or a sentence explaining why
+  /// it's still there — most often because it has bookings on it, which the
+  /// database refuses to orphan.
+  Future<String?> remove(String id) async {
     if (_isRemote) {
       try {
         await SupabaseService.client.from('listings').delete().eq('id', id);
         _remote.removeWhere((p) => p.id == id);
         notifyListeners();
-      } catch (_) {}
-      return;
+        return null;
+      } on PostgrestException catch (e) {
+        // A foreign-key violation here means reservations still reference it.
+        if (e.message.toLowerCase().contains('foreign key')) {
+          return 'This listing has bookings on it. Deactivate it instead.';
+        }
+        return describeDbError(e.message);
+      } catch (_) {
+        return 'We couldn\'t reach Nesty. Check your connection and try again.';
+      }
     }
     await _local.removeById(id);
+    return null;
   }
 
   @override

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../../../core/branding/app_icons.dart';
 import '../../../../core/services/app_feedback.dart';
@@ -10,7 +11,13 @@ import '../../domain/entities/reservation.dart';
 /// A single reservation row used across Trips, the host Calendar and the
 /// dashboard. When [manageable] is true it shows host controls to confirm,
 /// cancel or mark a reservation complete.
-class ReservationTile extends StatelessWidget {
+///
+/// Every action callback returns the store's result: `null` when the write
+/// landed, or a sentence explaining why it didn't. The tile waits for that
+/// before it says anything — it used to fire a success snackbar the instant
+/// the button was tapped, which meant an agency could be told "Reservation
+/// confirmed" while the database was refusing the write.
+class ReservationTile extends StatefulWidget {
   const ReservationTile({
     super.key,
     required this.reservation,
@@ -23,13 +30,43 @@ class ReservationTile extends StatelessWidget {
 
   final Reservation reservation;
   final bool manageable;
-  final VoidCallback? onConfirm;
+  final Future<String?> Function()? onConfirm;
 
   /// Called with the reason the agency typed. It is never empty — the sheet
   /// won't submit without one, matching the dashboard.
-  final void Function(String reason)? onCancel;
-  final VoidCallback? onComplete;
+  final Future<String?> Function(String reason)? onCancel;
+  final Future<String?> Function()? onComplete;
   final bool showGuest;
+
+  @override
+  State<ReservationTile> createState() => _ReservationTileState();
+}
+
+class _ReservationTileState extends State<ReservationTile> {
+  bool _busy = false;
+
+  Reservation get reservation => widget.reservation;
+  bool get manageable => widget.manageable;
+  bool get showGuest => widget.showGuest;
+
+  /// Runs an action, keeps the buttons disabled while it's in flight, and
+  /// reports whichever way it went.
+  Future<void> _run(
+    Future<String?> Function() action,
+    String successMessage,
+  ) async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    final error = await action();
+    if (!mounted) return;
+    setState(() => _busy = false);
+    if (error == null) {
+      AppFeedback.success(context, successMessage);
+    } else {
+      HapticFeedback.mediumImpact();
+      AppFeedback.error(context, error);
+    }
+  }
 
   static const _months = [
     'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
@@ -73,13 +110,12 @@ class ReservationTile extends StatelessWidget {
       builder: (sheetContext) => _ReasonSheet(isCancel: isCancel),
     );
     if (reason == null || reason.isEmpty) return;
-    onCancel?.call(reason);
-    if (context.mounted) {
-      AppFeedback.info(
-        context,
-        isCancel ? 'Reservation cancelled' : 'Request declined',
-      );
-    }
+    final action = widget.onCancel;
+    if (action == null) return;
+    await _run(
+      () => action(reason),
+      isCancel ? 'Reservation cancelled' : 'Request declined',
+    );
   }
 
   @override
@@ -239,15 +275,13 @@ class ReservationTile extends StatelessWidget {
                       label: 'Confirm',
                       icon: AppIcons.check,
                       filled: true,
-                      onTap: onConfirm == null
+                      busy: _busy,
+                      onTap: widget.onConfirm == null
                           ? null
-                          : () {
-                              onConfirm!();
-                              AppFeedback.success(
-                                context,
-                                'Reservation confirmed',
-                              );
-                            },
+                          : () => _run(
+                              widget.onConfirm!,
+                              'Reservation confirmed',
+                            ),
                     ),
                   ),
                 if (status == ReservationStatus.confirmed)
@@ -256,15 +290,13 @@ class ReservationTile extends StatelessWidget {
                       label: 'Mark done',
                       icon: AppIcons.checkAll,
                       filled: true,
-                      onTap: onComplete == null
+                      busy: _busy,
+                      onTap: widget.onComplete == null
                           ? null
-                          : () {
-                              onComplete!();
-                              AppFeedback.success(
-                                context,
-                                'Marked as complete',
-                              );
-                            },
+                          : () => _run(
+                              widget.onComplete!,
+                              'Marked as complete',
+                            ),
                     ),
                   ),
                 const SizedBox(width: AppSpacing.sm),
@@ -275,7 +307,8 @@ class ReservationTile extends StatelessWidget {
                         : 'Decline',
                     icon: AppIcons.close,
                     filled: false,
-                    onTap: onCancel == null
+                    busy: _busy,
+                    onTap: widget.onCancel == null
                         ? null
                         : () => _askReason(context, status),
                   ),
@@ -453,6 +486,7 @@ class _Action extends StatelessWidget {
     required this.icon,
     required this.filled,
     required this.onTap,
+    this.busy = false,
   });
 
   final String label;
@@ -460,35 +494,49 @@ class _Action extends StatelessWidget {
   final bool filled;
   final VoidCallback? onTap;
 
+  /// True while any action on the tile is in flight. Every button dims and
+  /// stops responding, so a slow network can't produce two confirmations from
+  /// one impatient agency.
+  final bool busy;
+
   @override
   Widget build(BuildContext context) {
+    final disabled = busy || onTap == null;
+    final fg = filled ? AppColors.onAccent : AppColors.label;
     return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        height: 40,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: filled ? AppColors.ink : AppColors.fill,
-          borderRadius: BorderRadius.circular(AppRadius.sm),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              size: 16,
-              color: filled ? AppColors.onAccent : AppColors.label,
-            ),
-            const SizedBox(width: 6),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                color: filled ? AppColors.onAccent : AppColors.label,
+      onTap: disabled ? null : onTap,
+      child: AnimatedOpacity(
+        opacity: disabled ? 0.5 : 1,
+        duration: const Duration(milliseconds: 150),
+        child: Container(
+          height: 40,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: filled ? AppColors.ink : AppColors.fill,
+            borderRadius: BorderRadius.circular(AppRadius.sm),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (busy)
+                SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: fg),
+                )
+              else
+                Icon(icon, size: 16, color: fg),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: fg,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

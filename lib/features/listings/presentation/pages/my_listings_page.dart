@@ -6,6 +6,7 @@ import '../../../../app/router/app_routes.dart';
 import '../../../../core/branding/app_icons.dart';
 import '../../../../core/format/money.dart';
 import '../../../../core/localization/app_locale.dart';
+import '../../../../core/services/app_feedback.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/widgets/app_image.dart';
@@ -122,7 +123,63 @@ class _ListingRow extends StatelessWidget {
   final Property property;
   final bool reserved;
   final VoidCallback onTap;
-  final VoidCallback onDelete;
+
+  /// Returns `null` when the listing is gone, or why it isn't.
+  final Future<String?> Function() onDelete;
+
+  /// Deleting a listing is permanent and was previously one stray tap away with
+  /// no warning and no result. Ask first, then say what happened.
+  Future<void> _confirmDelete(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(context.copy('Delete this listing?', 'Supprimer cette annonce ?')),
+        content: Text(
+          reserved
+              ? context.copy(
+                  'This place has upcoming bookings. Deleting it is permanent — '
+                  'deactivating it instead keeps the bookings and the details.',
+                  'Ce logement a des réservations à venir. La suppression est '
+                  'définitive — le désactiver conserve les réservations et les infos.',
+                )
+              : context.copy(
+                  'This is permanent. The photos, the description and the '
+                  'pricing all go with it.',
+                  'C\'est définitif. Les photos, la description et les tarifs '
+                  'partent avec.',
+                ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text(context.copy('Keep it', 'Conserver')),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text(
+              context.copy('Delete', 'Supprimer'),
+              style: const TextStyle(
+                color: Color(0xFFB23A34),
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+
+    final error = await onDelete();
+    if (!context.mounted) return;
+    if (error == null) {
+      AppFeedback.success(
+        context,
+        context.copy('Listing deleted', 'Annonce supprimée'),
+      );
+    } else {
+      AppFeedback.error(context, error);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -225,7 +282,8 @@ class _ListingRow extends StatelessWidget {
                 size: 18,
                 color: AppColors.tertiaryLabel,
               ),
-              onPressed: onDelete,
+              onPressed: () => _confirmDelete(context),
+              tooltip: context.copy('Delete listing', 'Supprimer l\'annonce'),
             ),
           ],
         ),

@@ -7,6 +7,7 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../../../app/di/injection.dart';
 import '../../../../core/localization/app_locale.dart';
+import '../../../../core/services/app_feedback.dart';
 import '../../../../core/services/cloudinary_service.dart';
 import '../../../../core/services/supabase_service.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -190,6 +191,11 @@ class _CreateListingPageState extends State<CreateListingPage> {
       }
       if (!mounted) return;
       HapticFeedback.mediumImpact();
+      // Shown through the app-wide messenger, so it survives this page popping.
+      AppFeedback.success(
+        context,
+        french ? 'Annonce publiée' : 'Listing published',
+      );
       Navigator.of(context).pop(true);
     } catch (e) {
       if (!mounted) return;
@@ -218,10 +224,13 @@ class _CreateListingPageState extends State<CreateListingPage> {
     final urls = await _uploadPhotos(french);
     final property = _buildProperty(images: urls);
 
+    // `status` already comes from the draft as 'published'. It used to be
+    // overridden with the pre-migration 'active' spelling here, which meant
+    // every listing published from a phone was written in the legacy
+    // vocabulary while the dashboard wrote the new one.
     final map = property.toMap()
       ..remove('id')
-      ..['host_id'] = uid
-      ..['status'] = 'active';
+      ..['host_id'] = uid;
     // Drop optional columns when empty so publishing still works even if the
     // location migration hasn't been applied yet.
     map.removeWhere(
