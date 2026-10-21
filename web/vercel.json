@@ -1,5 +1,8 @@
 {
+  "buildCommand": "echo 'built'",
+  "installCommand": "echo 'installed'",
   "rewrites": [
+    { "source": "/", "destination": "/index.html" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
