@@ -8,7 +8,7 @@ grey identity (Outfit + Plus Jakarta Sans).
 ## Getting started
 
 ```bash
-cd web
+cd website
 npm install
 npm run dev      # http://localhost:3000
 ```
