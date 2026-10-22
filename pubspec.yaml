@@ -57,6 +57,7 @@ dependencies:
   flutter_tts: ^4.2.5
   custom_refresh_indicator: ^4.0.1
   flutter_local_notifications: ^22.1.0
+  lucide_icons_flutter: 4.0.1
 
 dev_dependencies:
   flutter_test:

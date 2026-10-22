@@ -1,5 +1,5 @@
 import 'package:flutter/widgets.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 /// Nesty's icon vocabulary — modern, thin-line Lucide glyphs mapped to semantic
 /// names. Screens reference [AppIcons] rather than raw icon constants, so the
