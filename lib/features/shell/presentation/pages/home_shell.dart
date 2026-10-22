@@ -22,7 +22,6 @@ import '../../../notifications/data/notifications_store.dart';
 import '../../../onboarding/data/profile_setup_store.dart';
 import '../../../onboarding/presentation/pages/profile_setup_flow_page.dart';
 import '../../../profile/presentation/pages/profile_page.dart';
-import '../../../settings/presentation/pages/settings_page.dart';
 import '../../../partner/presentation/pages/partner_home_page.dart';
 import '../../../reservations/data/reservations_store.dart';
 import '../../../reservations/presentation/pages/host_calendar_page.dart';
@@ -62,7 +61,9 @@ class _HomeShellState extends State<HomeShell> {
     // Ask for the OS notification permission now the member is inside the app.
     PushService.requestPermission();
     // Load the one-time identity-verification state.
-    sl<VerificationStore>().load();
+    sl<VerificationStore>().load(
+      userId: context.read<AuthCubit>().state.user?.id,
+    );
     // Load the Partner subscription, then enforce the rule that a Partner must
     // hold an active plan — otherwise they revert to a simple seeker.
     WidgetsBinding.instance.addPostFrameCallback((_) => _onFirstFrame());
@@ -176,7 +177,7 @@ class _HomeShellState extends State<HomeShell> {
             context.copy('Profile', 'Profil')),
       ];
     } else {
-      pages = const [HomePage(), SavedPage(), MyTripsPage(), SettingsPage()];
+      pages = const [HomePage(), SavedPage(), MyTripsPage(), ProfilePage()];
       tabs = [
         _TabItem(AppIcons.explore, AppIcons.explore,
             context.copy('Explore', 'Explorer')),
@@ -184,8 +185,8 @@ class _HomeShellState extends State<HomeShell> {
             context.copy('Saved', 'Favoris')),
         _TabItem(AppIcons.trips, AppIcons.trips,
             context.copy('Trips', 'Voyages')),
-        _TabItem(AppIcons.settings, AppIcons.settings,
-            context.copy('Settings', 'Réglages')),
+        _TabItem(AppIcons.profile, AppIcons.profile,
+            context.copy('Profile', 'Profil')),
       ];
     }
 

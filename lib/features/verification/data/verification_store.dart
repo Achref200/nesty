@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -28,14 +26,14 @@ class VerificationStore extends ChangeNotifier {
   /// First-time state: nothing submitted yet.
   bool get needsVerification => _value.needsVerification;
 
-  static const _key = 'verification';
+  static const _keyPrefix = 'verification.';
+  String _storageKey = '${_keyPrefix}anonymous';
 
-  Future<void> load() async {
-    final map = LocalStore.instance.getJson(_key);
-    if (map != null) {
-      _value = Verification.fromMap(map);
-      notifyListeners();
-    }
+  Future<void> load({String? userId}) async {
+    _storageKey = '$_keyPrefix${userId ?? 'anonymous'}';
+    final map = LocalStore.instance.getJson(_storageKey);
+    _value = map == null ? const Verification() : Verification.fromMap(map);
+    notifyListeners();
     await refreshFromBackend();
     _subscribeToStatusChanges();
   }
@@ -53,21 +51,28 @@ class VerificationStore extends ChangeNotifier {
           .select('status, doc_type, full_name, phone, submitted_at')
           .eq('user_id', uid)
           .maybeSingle();
-      if (row == null) return;
+      if (row == null) {
+        _value = const Verification();
+        await LocalStore.instance.setJson(_storageKey, _value.toMap());
+        notifyListeners();
+        return;
+      }
       final status = VerificationStatus.values.firstWhere(
         (e) => e.name == row['status'],
         orElse: () => _value.status,
       );
       _value = Verification(
         status: status,
-        docType: _value.docType,
+        docType: row['doc_type'] == null
+            ? _value.docType
+            : IdDocumentType.fromDbValue(row['doc_type'] as String?),
         fullName: (row['full_name'] as String?) ?? _value.fullName,
         phone: (row['phone'] as String?) ?? _value.phone,
         submittedAt: row['submitted_at'] == null
             ? _value.submittedAt
             : DateTime.tryParse(row['submitted_at'] as String),
       );
-      await LocalStore.instance.setJson(_key, _value.toMap());
+      await LocalStore.instance.setJson(_storageKey, _value.toMap());
       notifyListeners();
     } catch (e) {
       debugPrint('Verification backend refresh failed: $e');
@@ -80,9 +85,12 @@ class VerificationStore extends ChangeNotifier {
     required IdDocumentType docType,
     required String fullName,
     required String phone,
-    String? frontPath,
-    String? backPath,
-    String? selfiePath,
+    Uint8List? frontBytes,
+    String? frontFileName,
+    Uint8List? backBytes,
+    String? backFileName,
+    Uint8List? selfieBytes,
+    String? selfieFileName,
   }) async {
     final submission = Verification(
       status: VerificationStatus.pending,
@@ -95,12 +103,15 @@ class VerificationStore extends ChangeNotifier {
       docType: docType,
       fullName: fullName.trim(),
       phone: phone.trim(),
-      frontPath: frontPath,
-      backPath: backPath,
-      selfiePath: selfiePath,
+      frontBytes: frontBytes,
+      frontFileName: frontFileName,
+      backBytes: backBytes,
+      backFileName: backFileName,
+      selfieBytes: selfieBytes,
+      selfieFileName: selfieFileName,
     );
     _value = submission;
-    await LocalStore.instance.setJson(_key, _value.toMap());
+    await LocalStore.instance.setJson(_storageKey, _value.toMap());
     notifyListeners();
   }
 
@@ -111,9 +122,12 @@ class VerificationStore extends ChangeNotifier {
     required IdDocumentType docType,
     required String fullName,
     required String phone,
-    String? frontPath,
-    String? backPath,
-    String? selfiePath,
+    Uint8List? frontBytes,
+    String? frontFileName,
+    Uint8List? backBytes,
+    String? backFileName,
+    Uint8List? selfieBytes,
+    String? selfieFileName,
   }) async {
     if (!SupabaseService.isReady) return;
     final client = SupabaseService.client;
@@ -125,10 +139,16 @@ class VerificationStore extends ChangeNotifier {
     }
 
     try {
-      Future<String?> upload(String? path, String name) async {
-        if (path == null) return null;
-        final bytes = await File(path).readAsBytes();
-        final ext = path.contains('.') ? path.split('.').last : 'jpg';
+      Future<String?> upload(
+        Uint8List? bytes,
+        String? fileName,
+        String name,
+      ) async {
+        if (bytes == null) return null;
+        final rawExtension = fileName?.split('.').last.toLowerCase() ?? 'jpg';
+        final ext = RegExp(r'^[a-z0-9]{1,8}$').hasMatch(rawExtension)
+            ? rawExtension
+            : 'jpg';
         final objectPath = '$uid/$name.$ext';
         await client.storage
             .from('verification-docs')
@@ -140,9 +160,9 @@ class VerificationStore extends ChangeNotifier {
         return objectPath;
       }
 
-      final frontUrl = await upload(frontPath, 'front');
-      final backUrl = await upload(backPath, 'back');
-      final selfieUrl = await upload(selfiePath, 'selfie');
+      final frontUrl = await upload(frontBytes, frontFileName, 'front');
+      final backUrl = await upload(backBytes, backFileName, 'back');
+      final selfieUrl = await upload(selfieBytes, selfieFileName, 'selfie');
 
       await client.rpc(
         'submit_verification',
@@ -188,7 +208,7 @@ class VerificationStore extends ChangeNotifier {
 
   Future<void> reset() async {
     _value = const Verification();
-    await LocalStore.instance.remove(_key);
+    await LocalStore.instance.remove(_storageKey);
     notifyListeners();
   }
 

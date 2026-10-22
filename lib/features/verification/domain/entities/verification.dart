@@ -55,6 +55,13 @@ enum IdDocumentType {
     (e) => e.name == v,
     orElse: () => IdDocumentType.nationalId,
   );
+
+  static IdDocumentType fromDbValue(String? value) => switch (value) {
+    'national_id' => IdDocumentType.nationalId,
+    'passport' => IdDocumentType.passport,
+    'driver_license' => IdDocumentType.driverLicense,
+    _ => IdDocumentType.nationalId,
+  };
 }
 
 class Verification {

@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -46,9 +44,9 @@ class _VerificationFlowState extends State<_VerificationFlow> {
   bool _submitting = false;
 
   IdDocumentType? _docType;
-  String? _frontPath;
-  String? _backPath;
-  String? _selfiePath;
+  _PickedImage? _frontImage;
+  _PickedImage? _backImage;
+  _PickedImage? _selfieImage;
   final _name = TextEditingController();
   final _phone = TextEditingController();
   final _picker = ImagePicker();
@@ -75,7 +73,10 @@ class _VerificationFlowState extends State<_VerificationFlow> {
     });
   }
 
-  Future<void> _pick(ImageSource source, void Function(String) onPicked) async {
+  Future<void> _pick(
+    ImageSource source,
+    void Function(_PickedImage) onPicked,
+  ) async {
     try {
       final x = await _picker.pickImage(
         source: source,
@@ -83,13 +84,23 @@ class _VerificationFlowState extends State<_VerificationFlow> {
         maxWidth: 1600,
         preferredCameraDevice: CameraDevice.front,
       );
-      if (x != null) setState(() => onPicked(x.path));
+      if (x != null) {
+        final image = _PickedImage(await x.readAsBytes(), x.name);
+        if (mounted) {
+          setState(() {
+            onPicked(image);
+            _error = null;
+          });
+        }
+      }
     } catch (_) {
       if (mounted) {
-        setState(() => _error = context.copy(
-          "Couldn't open the camera or gallery.",
-          "Impossible d'ouvrir l'appareil photo ou la galerie.",
-        ));
+        setState(
+          () => _error = context.copy(
+            "Couldn't open the camera or gallery.",
+            "Impossible d'ouvrir l'appareil photo ou la galerie.",
+          ),
+        );
       }
     }
   }
@@ -98,49 +109,61 @@ class _VerificationFlowState extends State<_VerificationFlow> {
     switch (_step) {
       case 1:
         if (_docType == null) {
-          _fail(context.copy(
-            'Choose which document you\u2019ll use.',
-            'Choisissez le document à utiliser.',
-          ));
+          _fail(
+            context.copy(
+              'Choose which document you\u2019ll use.',
+              'Choisissez le document à utiliser.',
+            ),
+          );
           return false;
         }
-        if (_frontPath == null) {
-          _fail(context.copy(
-            'Add a photo of your ${_docType!.label}.',
-            'Ajoutez une photo de votre ${_docType!.labelFor(true)}.',
-          ));
+        if (_frontImage == null) {
+          _fail(
+            context.copy(
+              'Add a photo of your ${_docType!.label}.',
+              'Ajoutez une photo de votre ${_docType!.labelFor(true)}.',
+            ),
+          );
           return false;
         }
-        if (_docType!.twoSided && _backPath == null) {
-          _fail(context.copy(
-            'Add the back of your document too.',
-            'Ajoutez aussi le verso de votre document.',
-          ));
+        if (_docType!.twoSided && _backImage == null) {
+          _fail(
+            context.copy(
+              'Add the back of your document too.',
+              'Ajoutez aussi le verso de votre document.',
+            ),
+          );
           return false;
         }
         return true;
       case 2:
-        if (_selfiePath == null) {
-          _fail(context.copy(
-            'Add a quick selfie so we can match it to your ID.',
-            'Ajoutez un selfie pour le comparer à votre pièce.',
-          ));
+        if (_selfieImage == null) {
+          _fail(
+            context.copy(
+              'Add a quick selfie so we can match it to your ID.',
+              'Ajoutez un selfie pour le comparer à votre pièce.',
+            ),
+          );
           return false;
         }
         return true;
       case 3:
         if (_name.text.trim().length < 3) {
-          _fail(context.copy(
-            'Enter your full legal name.',
-            'Saisissez votre nom légal complet.',
-          ));
+          _fail(
+            context.copy(
+              'Enter your full legal name.',
+              'Saisissez votre nom légal complet.',
+            ),
+          );
           return false;
         }
         if (_phone.text.trim().length < 6) {
-          _fail(context.copy(
-            'Enter a phone number we can reach you on.',
-            'Saisissez un numéro où vous joindre.',
-          ));
+          _fail(
+            context.copy(
+              'Enter a phone number we can reach you on.',
+              'Saisissez un numéro où vous joindre.',
+            ),
+          );
           return false;
         }
         return true;
@@ -165,9 +188,12 @@ class _VerificationFlowState extends State<_VerificationFlow> {
         docType: _docType!,
         fullName: _name.text,
         phone: _phone.text,
-        frontPath: _frontPath,
-        backPath: _backPath,
-        selfiePath: _selfiePath,
+        frontBytes: _frontImage?.bytes,
+        frontFileName: _frontImage?.name,
+        backBytes: _backImage?.bytes,
+        backFileName: _backImage?.name,
+        selfieBytes: _selfieImage?.bytes,
+        selfieFileName: _selfieImage?.name,
       );
       if (!mounted) return;
       HapticFeedback.mediumImpact();
@@ -273,9 +299,9 @@ class _VerificationFlowState extends State<_VerificationFlow> {
         Text(
           context.copy(
             'A quick one-time check — the same trust step you\u2019d do on Upwork '
-            'or with your bank. It takes about two minutes.',
+                'or with your bank. It takes about two minutes.',
             'Une vérification rapide et unique — la même étape de confiance '
-            'que sur Upwork ou avec votre banque. Environ deux minutes.',
+                'que sur Upwork ou avec votre banque. Environ deux minutes.',
           ),
           style: theme.textTheme.bodyMedium,
         ),
@@ -286,7 +312,7 @@ class _VerificationFlowState extends State<_VerificationFlow> {
           subtitle: context.copy(
             'Show agencies and owners you\u2019re a real, trusted member.',
             'Montrez aux agences et propriétaires que vous êtes un membre '
-            'réel et fiable.',
+                'réel et fiable.',
           ),
         ),
         _BenefitRow(
@@ -346,15 +372,17 @@ class _VerificationFlowState extends State<_VerificationFlow> {
             label: _docType!.twoSided
                 ? context.copy('Front side', 'Recto')
                 : context.copy('Photo page', 'Page photo'),
-            path: _frontPath,
-            onTap: () => _pick(ImageSource.gallery, (p) => _frontPath = p),
+            bytes: _frontImage?.bytes,
+            onTap: () =>
+                _pick(ImageSource.gallery, (image) => _frontImage = image),
           ),
           if (_docType!.twoSided) ...[
             const SizedBox(height: AppSpacing.sm),
             _UploadTile(
               label: context.copy('Back side', 'Verso'),
-              path: _backPath,
-              onTap: () => _pick(ImageSource.gallery, (p) => _backPath = p),
+              bytes: _backImage?.bytes,
+              onTap: () =>
+                  _pick(ImageSource.gallery, (image) => _backImage = image),
             ),
           ],
         ],
@@ -377,9 +405,9 @@ class _VerificationFlowState extends State<_VerificationFlow> {
         Text(
           context.copy(
             'We match it to your document to confirm it\u2019s really you. '
-            'Good light, no hat or sunglasses.',
+                'Good light, no hat or sunglasses.',
             'Nous le comparons à votre document pour confirmer votre identité. '
-            'Bonne lumière, sans chapeau ni lunettes de soleil.',
+                'Bonne lumière, sans chapeau ni lunettes de soleil.',
           ),
           style: theme.textTheme.bodyMedium,
         ),
@@ -387,16 +415,21 @@ class _VerificationFlowState extends State<_VerificationFlow> {
         _UploadTile(
           label: context.copy('Take a selfie', 'Prendre un selfie'),
           icon: AppIcons.camera,
-          path: _selfiePath,
+          bytes: _selfieImage?.bytes,
           tall: true,
-          onTap: () => _pick(ImageSource.camera, (p) => _selfiePath = p),
+          onTap: () =>
+              _pick(ImageSource.camera, (image) => _selfieImage = image),
         ),
         const SizedBox(height: AppSpacing.sm),
         TextButton.icon(
-          onPressed: () => _pick(ImageSource.gallery, (p) => _selfiePath = p),
+          onPressed: () =>
+              _pick(ImageSource.gallery, (image) => _selfieImage = image),
           icon: const Icon(AppIcons.image, size: 16),
           label: Text(
-            context.copy('Choose from gallery instead', 'Choisir depuis la galerie'),
+            context.copy(
+              'Choose from gallery instead',
+              'Choisir depuis la galerie',
+            ),
           ),
         ),
         if (_error != null) _errorRow(_error!),
@@ -427,7 +460,10 @@ class _VerificationFlowState extends State<_VerificationFlow> {
         const SizedBox(height: AppSpacing.sm),
         NeuField(
           controller: _name,
-          placeholder: context.copy('e.g. Ahmed Ben Salah', 'ex. Ahmed Ben Salah'),
+          placeholder: context.copy(
+            'e.g. Ahmed Ben Salah',
+            'ex. Ahmed Ben Salah',
+          ),
           icon: AppIcons.profile,
           textCapitalization: TextCapitalization.words,
         ),
@@ -498,9 +534,9 @@ class _VerificationFlowState extends State<_VerificationFlow> {
         Text(
           context.copy(
             'Our team reviews submissions within 24–48h. We\u2019ll notify you the '
-            'moment your badge is ready.',
+                'moment your badge is ready.',
             'Notre équipe examine les demandes sous 24–48h. Nous vous préviendrons '
-            'dès que votre badge est prêt.',
+                'dès que votre badge est prêt.',
           ),
           style: theme.textTheme.bodyMedium,
         ),
@@ -548,9 +584,9 @@ class _VerificationFlowState extends State<_VerificationFlow> {
           Text(
             context.copy(
               'Your identity is under review. We\u2019ll add your verified badge '
-              'as soon as it\u2019s approved — usually within a day.',
+                  'as soon as it\u2019s approved — usually within a day.',
               'Votre identité est en cours d\u2019examen. Nous ajouterons votre '
-              'badge vérifié dès qu\u2019il est approuvé — souvent en un jour.',
+                  'badge vérifié dès qu\u2019il est approuvé — souvent en un jour.',
             ),
             textAlign: TextAlign.center,
             style: theme.textTheme.bodyMedium,
@@ -768,21 +804,21 @@ class _TypeCard extends StatelessWidget {
 class _UploadTile extends StatelessWidget {
   const _UploadTile({
     required this.label,
-    required this.path,
+    required this.bytes,
     required this.onTap,
     this.icon = AppIcons.upload,
     this.tall = false,
   });
 
   final String label;
-  final String? path;
+  final Uint8List? bytes;
   final VoidCallback onTap;
   final IconData icon;
   final bool tall;
 
   @override
   Widget build(BuildContext context) {
-    final has = path != null;
+    final has = bytes != null;
     return GestureDetector(
       onTap: () {
         HapticFeedback.selectionClick();
@@ -803,7 +839,7 @@ class _UploadTile extends StatelessWidget {
             ? Stack(
                 fit: StackFit.expand,
                 children: [
-                  Image.file(File(path!), fit: BoxFit.cover),
+                  Image.memory(bytes!, fit: BoxFit.cover),
                   Positioned(
                     right: 8,
                     top: 8,
@@ -871,6 +907,13 @@ class _UploadTile extends StatelessWidget {
       ),
     );
   }
+}
+
+class _PickedImage {
+  const _PickedImage(this.bytes, this.name);
+
+  final Uint8List bytes;
+  final String name;
 }
 
 class _MiniLabel extends StatelessWidget {
