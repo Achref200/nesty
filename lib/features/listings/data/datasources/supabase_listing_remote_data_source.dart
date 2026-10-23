@@ -8,8 +8,8 @@ import 'listing_remote_data_source.dart';
 /// Reads listings from the shared `listings` table in Supabase.
 ///
 /// Expected columns match [PropertyModel.fromMap]. Everything returned here
-/// feeds the traveller-facing feed, so it is filtered to live listings only —
-/// a host's drafts must never reach a seeker.
+/// feeds the traveller-facing feed, so only active, published, non-demo
+/// listings can reach a seeker.
 class SupabaseListingRemoteDataSource implements ListingRemoteDataSource {
   const SupabaseListingRemoteDataSource(this._client);
 
@@ -35,7 +35,8 @@ class SupabaseListingRemoteDataSource implements ListingRemoteDataSource {
       final query = _client
           .from(_table)
           .select()
-          .inFilter('status', publicVisibleStatuses);
+          .inFilter('status', publicVisibleStatuses)
+          .eq('is_demo', false);
       final dbType = _typeByCategory[category];
       final rows = await (dbType == null ? query : query.eq('type', dbType));
       return (rows as List)
@@ -49,7 +50,13 @@ class SupabaseListingRemoteDataSource implements ListingRemoteDataSource {
   @override
   Future<PropertyModel> getListingById(String id) async {
     try {
-      final row = await _client.from(_table).select().eq('id', id).single();
+      final row = await _client
+          .from(_table)
+          .select()
+          .eq('id', id)
+          .inFilter('status', publicVisibleStatuses)
+          .eq('is_demo', false)
+          .single();
       return PropertyModel.fromMap(row);
     } catch (e) {
       throw ServerException(e.toString());

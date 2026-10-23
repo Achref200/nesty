@@ -21,7 +21,6 @@ import '../../../saved/presentation/cubit/saved_cubit.dart';
 import '../../../reservations/presentation/pages/reservation_flow_page.dart';
 import '../../domain/entities/listing_schema.dart';
 import '../../domain/entities/property.dart';
-import '../../domain/entities/trust_info.dart';
 import '../cubit/listing_details_cubit.dart';
 import '../widgets/neighborhood_section.dart';
 import '../widgets/trust_section.dart';
@@ -122,16 +121,6 @@ class _Content extends StatelessWidget {
                           style: theme.textTheme.titleLarge,
                         ),
                       ),
-                      const Icon(AppIcons.star, size: 18, color: AppColors.ink),
-                      const SizedBox(width: 3),
-                      Text(
-                        property.rating.toStringAsFixed(2),
-                        style: theme.textTheme.titleMedium,
-                      ),
-                      Text(
-                        '  (${property.reviewCount})',
-                        style: theme.textTheme.bodyMedium,
-                      ),
                     ],
                   ),
                 ),
@@ -163,7 +152,7 @@ class _Content extends StatelessWidget {
                 const SizedBox(height: AppSpacing.lg),
                 FadeSlideIn(
                   delay: const Duration(milliseconds: 190),
-                  child: TrustSection(trust: TrustInfo.of(property)),
+                  child: const TrustSection(),
                 ),
                 const SizedBox(height: AppSpacing.xl),
                 FadeSlideIn(
@@ -485,8 +474,6 @@ String _listingContext(Property p) {
     'Price: $price${p.billsIncluded ? ' (bills included)' : ''}',
     'Bedrooms: ${p.bedrooms}, Bathrooms: ${p.bathrooms}, '
         'Area: ${p.areaSqm.toStringAsFixed(0)} m\u00b2',
-    'Rating: ${p.rating.toStringAsFixed(2)} from ${p.reviewCount} reviews'
-        '${p.isSuperhost ? ', superhost' : ''}',
     'Host: ${p.hostName}',
     if (p.flatmates > 0) 'Flatmates: ${p.flatmates}',
     'Amenities: $amenities',

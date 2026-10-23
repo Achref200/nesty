@@ -32,9 +32,14 @@ abstract final class AssistantBrain {
       '(students, families, professionals). Prices are in Tunisian dinars (DT).',
     );
     b.writeln(
-      '- Listings show price, type, bedrooms/bathrooms, area (m\u00b2), amenities, '
-      'rating, a trust score, and a neighbourhood map. Users can filter, save '
-      'favourites, and request a visit or a stay (reservations).',
+      '- Listings show the property details supplied by the agency, such as '
+      'price, type, bedrooms/bathrooms, area (m\u00b2), and amenities. Users can '
+      'filter, save favourites, and send a visit or stay request.',
+    );
+    b.writeln(
+      '- Nesty does not currently show an independent verification record for '
+      'property ownership, photos, reviews, or availability. Ask the agency to '
+      'confirm those details before booking.',
     );
     b.writeln(
       '- There are seekers, hosts/agencies, and paid partners. Be equally '

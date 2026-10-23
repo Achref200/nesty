@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../../core/branding/app_icons.dart';
 import '../../../../core/format/money.dart';
 import '../../../../core/localization/app_locale.dart';
 import '../../../../core/services/analytics_service.dart';
@@ -15,8 +14,6 @@ import '../../../../core/widgets/neu/neu_tappable.dart';
 import '../../../saved/presentation/cubit/saved_cubit.dart';
 import '../../domain/entities/listing_schema.dart';
 import '../../domain/entities/property.dart';
-import '../../domain/entities/trust_info.dart';
-import 'trust_badge.dart';
 
 /// The primary feed card. A large image with a floating 3D badge, then a
 /// compact info row rendered on a soft-morphism surface.
@@ -87,12 +84,6 @@ class _PropertyCardState extends State<PropertyCard> {
                         style: theme.textTheme.titleMedium,
                       ),
                     ),
-                    const Icon(AppIcons.star, size: 15, color: AppColors.ink),
-                    const SizedBox(width: 2),
-                    Text(
-                      property.rating.toStringAsFixed(2),
-                      style: theme.textTheme.labelLarge,
-                    ),
                   ],
                 ),
                 const SizedBox(height: 2),
@@ -106,8 +97,6 @@ class _PropertyCardState extends State<PropertyCard> {
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    const SizedBox(width: AppSpacing.sm),
-                    TrustBadge(trust: TrustInfo.of(property)),
                   ],
                 ),
                 const SizedBox(height: AppSpacing.sm),
