@@ -32,6 +32,8 @@ migrate_working_dir/
 .pub/
 /build/
 /coverage/
+/supabase/.temp/
+/.autoclaw/
 
 # Local secrets passed to the app via --dart-define-from-file (never commit the
 # real keys — copy dart_defines.example.json to dart_defines.json and fill it in).

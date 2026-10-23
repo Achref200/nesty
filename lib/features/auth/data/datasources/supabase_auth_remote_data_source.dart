@@ -42,7 +42,8 @@ class SupabaseAuthRemoteDataSource implements AuthRemoteDataSource {
       final res = await _client.auth.signUp(
         email: email,
         password: password,
-        data: {'full_name': fullName, 'role': role.id},
+        // Roles are assigned by trusted provisioning, never from sign-up input.
+        data: {'full_name': fullName},
       );
       final user = res.user;
       if (user == null) throw const AuthException('Could not create account.');
@@ -70,9 +71,13 @@ class SupabaseAuthRemoteDataSource implements AuthRemoteDataSource {
   }) async {
     final current = _client.auth.currentUser;
     if (current == null) throw const AuthException('You need to be signed in.');
+    if (role != null && role != UserRole.seeker) {
+      throw const AuthException(
+        'This account role must be assigned by Nesty. Contact support to activate it.',
+      );
+    }
     final metadata = <String, dynamic>{...?current.userMetadata};
     if (fullName != null) metadata['full_name'] = fullName;
-    if (role != null) metadata['role'] = role.id;
     if (avatarUrl != null) metadata['avatar_url'] = avatarUrl;
     try {
       final res = await _client.auth.updateUser(
@@ -80,11 +85,10 @@ class SupabaseAuthRemoteDataSource implements AuthRemoteDataSource {
       );
       final user = res.user;
       if (user == null) throw const AuthException('Could not update profile.');
-      // Persist to the profiles table too — that's the source _mapUser reads,
-      // so name/avatar/role changes reflect everywhere (web + mobile).
+      // Persist profile details; the profile role is server-controlled.
       final patch = <String, dynamic>{'id': user.id};
       if (fullName != null) patch['full_name'] = fullName;
-      if (role != null) patch['role'] = role.id;
+      if (role == UserRole.seeker) patch['role'] = role!.id;
       if (avatarUrl != null) patch['avatar_url'] = avatarUrl;
       if (patch.length > 1) {
         try {
@@ -100,9 +104,8 @@ class SupabaseAuthRemoteDataSource implements AuthRemoteDataSource {
   }
 
   /// Builds the app user, reading the authoritative role from the `profiles`
-  /// table (same source the web dashboard uses) and falling back to the auth
-  /// metadata. This is what makes a host land on the host experience and a
-  /// seeker on the seeker experience — even for accounts provisioned in SQL.
+  /// table (same source the web dashboard uses). Auth user metadata is
+  /// user-controlled and is never trusted for authorization.
   Future<AppUserModel> _mapUser(sb.User user) async {
     String? role;
     String? fullName = user.userMetadata?['full_name'] as String?;
@@ -119,9 +122,9 @@ class SupabaseAuthRemoteDataSource implements AuthRemoteDataSource {
         avatar = (row['avatar_url'] as String?) ?? avatar;
       }
     } catch (_) {
-      // Offline or RLS hiccup — fall back to auth metadata below.
+      // Offline or RLS hiccup — fail closed to the least privileged role.
     }
-    role ??= user.userMetadata?['role'] as String?;
+    role ??= UserRole.seeker.id;
     final appMeta = user.appMetadata;
     return AppUserModel(
       id: user.id,
@@ -141,7 +144,10 @@ class SupabaseAuthRemoteDataSource implements AuthRemoteDataSource {
   @override
   Future<void> sendPasswordReset(String email) async {
     try {
-      await _client.auth.resetPasswordForEmail(email, redirectTo: _resetRedirect);
+      await _client.auth.resetPasswordForEmail(
+        email,
+        redirectTo: _resetRedirect,
+      );
     } on sb.AuthException catch (e) {
       throw AuthException(e.message);
     }

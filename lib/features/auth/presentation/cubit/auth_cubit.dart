@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../../core/services/local_store.dart';
 import '../../../../core/usecase/usecase.dart';
 import '../../domain/entities/account_standing.dart';
 import '../../domain/entities/app_user.dart';
@@ -52,30 +51,8 @@ class AuthCubit extends Cubit<AuthState> {
   /// "Sign in" entry, which accepts any role.
   UserRole? _pendingProviderRole;
 
-  /// Persists a client-side role upgrade the server can't store yet (e.g. a
-  /// seeker who paid to become a Partner before the backend migration lands).
-  /// Scoped to the user id so it never leaks across accounts, and cleared on
-  /// sign-out. Once the server can hold the role, its value simply matches.
-  static const _overrideKey = 'auth.role_override';
-
-  /// Applies any pending local role override to [user] so the whole app sees
-  /// the upgraded role even when the backend returned the old one.
-  AppUser? _applyOverride(AppUser? user) {
-    if (user == null) return null;
-    final o = LocalStore.instance.getJson(_overrideKey);
-    if (o == null || o['uid'] != user.id) return user;
-    final role = UserRoleX.fromId(o['role'] as String?);
-    return role == user.role ? user : user.copyWith(role: role);
-  }
-
-  void _setRoleOverride(String uid, UserRole role) =>
-      LocalStore.instance.setJson(_overrideKey, {'uid': uid, 'role': role.id});
-
-  Future<void> _clearRoleOverride() =>
-      LocalStore.instance.remove(_overrideKey);
-
   void _onAuthChanged(AppUser? user) {
-    final resolved = _applyOverride(user);
+    final resolved = user;
     if (resolved == null) {
       if (state.status == AuthStatus.authenticated) {
         emit(const AuthState(status: AuthStatus.unauthenticated));
@@ -88,10 +65,12 @@ class AuthCubit extends Cubit<AuthState> {
     if (resolved.isBanned) {
       _pendingProviderRole = null;
       _signOut(const NoParams());
-      emit(AuthState(
-        status: AuthStatus.blocked,
-        block: _standingFromUser(resolved),
-      ));
+      emit(
+        AuthState(
+          status: AuthStatus.blocked,
+          block: _standingFromUser(resolved),
+        ),
+      );
       return;
     }
 
@@ -102,34 +81,26 @@ class AuthCubit extends Cubit<AuthState> {
     if (expected != null && state.status != AuthStatus.authenticated) {
       _pendingProviderRole = null;
       if (resolved.role != expected) {
-        // Seeker landing in the Partner space is the paid upgrade path — the
-        // paywall already ran, so grant Partner instead of rejecting.
-        if (expected == UserRole.partner &&
-            resolved.role == UserRole.seeker) {
-          emit(state.copyWith(
-            status: AuthStatus.authenticated,
-            user: resolved,
-            clearMismatch: true,
-          ));
-          switchRole(UserRole.partner);
-          return;
-        }
         // Wrong door — don't authenticate. Sign the session back out and tell
         // the UI which space this account really belongs to.
         _signOut(const NoParams());
-        emit(AuthState(
-          status: AuthStatus.unauthenticated,
-          mismatchRole: resolved.role,
-        ));
+        emit(
+          AuthState(
+            status: AuthStatus.unauthenticated,
+            mismatchRole: resolved.role,
+          ),
+        );
         return;
       }
     }
 
-    emit(state.copyWith(
-      status: AuthStatus.authenticated,
-      user: resolved,
-      clearMismatch: true,
-    ));
+    emit(
+      state.copyWith(
+        status: AuthStatus.authenticated,
+        user: resolved,
+        clearMismatch: true,
+      ),
+    );
   }
 
   /// Clears a pending OAuth role-mismatch flag once the UI has shown it.
@@ -145,7 +116,7 @@ class AuthCubit extends Cubit<AuthState> {
     await result.fold(
       (_) async => emit(state.copyWith(status: AuthStatus.unauthenticated)),
       (user) async {
-        final resolved = _applyOverride(user);
+        final resolved = user;
         if (resolved == null) {
           emit(state.copyWith(status: AuthStatus.unauthenticated));
           return;
@@ -176,7 +147,6 @@ class AuthCubit extends Cubit<AuthState> {
   Future<void> _blockAndSignOut(AccountStanding standing) async {
     _pendingProviderRole = null;
     await _signOut(const NoParams());
-    await _clearRoleOverride();
     emit(AuthState(status: AuthStatus.blocked, block: standing));
   }
 
@@ -216,14 +186,13 @@ class AuthCubit extends Cubit<AuthState> {
       (failure) {
         // Keep the message off the global toast — the surface classifies it
         // and shows tailored guidance (no account / wrong password / banned).
-        emit(state.copyWith(
-          status: AuthStatus.unauthenticated,
-          clearError: true,
-        ));
+        emit(
+          state.copyWith(status: AuthStatus.unauthenticated, clearError: true),
+        );
         return AuthAttempt(error: failure.message);
       },
       (user) {
-        final resolved = _applyOverride(user) ?? user;
+        final resolved = user;
         // A returning account that has since been suspended must not get in.
         if (resolved.isBanned) {
           _signOut(const NoParams());
@@ -237,9 +206,7 @@ class AuthCubit extends Cubit<AuthState> {
           emit(const AuthState(status: AuthStatus.unauthenticated));
           return AuthAttempt(roleMismatch: true, actualRole: resolved.role);
         }
-        emit(
-          state.copyWith(status: AuthStatus.authenticated, user: resolved),
-        );
+        emit(state.copyWith(status: AuthStatus.authenticated, user: resolved));
         return const AuthAttempt();
       },
     );
@@ -253,37 +220,27 @@ class AuthCubit extends Cubit<AuthState> {
     String password,
     UserRole role,
   ) async {
+    if (role != UserRole.seeker) {
+      return 'Partner accounts are activated by Nesty after payment and verification.';
+    }
     emit(state.copyWith(status: AuthStatus.submitting, clearError: true));
-    // Partner is a paid, self-serve upgrade. Create the base account as a
-    // seeker first — so the backend never has to accept a role it may not
-    // support yet — then apply the Partner role (which falls back to a local
-    // override when the server can't store it).
-    final wantsPartner = role == UserRole.partner;
-    final signUpRole = wantsPartner ? UserRole.seeker : role;
     final result = await _signUp(
       SignUpParams(
         email: email.trim(),
         password: password,
         fullName: fullName.trim(),
-        role: signUpRole,
+        role: UserRole.seeker,
       ),
     );
     return await result.fold(
       (failure) async {
-        emit(state.copyWith(
-          status: AuthStatus.unauthenticated,
-          clearError: true,
-        ));
+        emit(
+          state.copyWith(status: AuthStatus.unauthenticated, clearError: true),
+        );
         return failure.message;
       },
       (user) async {
-        emit(
-          state.copyWith(
-            status: AuthStatus.authenticated,
-            user: _applyOverride(user),
-          ),
-        );
-        if (wantsPartner) await switchRole(UserRole.partner);
+        emit(state.copyWith(status: AuthStatus.authenticated, user: user));
         return null;
       },
     );
@@ -292,7 +249,6 @@ class AuthCubit extends Cubit<AuthState> {
   Future<void> signOut() async {
     _pendingProviderRole = null;
     await _signOut(const NoParams());
-    await _clearRoleOverride();
     emit(const AuthState(status: AuthStatus.unauthenticated));
   }
 
@@ -308,7 +264,6 @@ class AuthCubit extends Cubit<AuthState> {
       return error;
     }
     _pendingProviderRole = null;
-    await _clearRoleOverride();
     emit(const AuthState(status: AuthStatus.unauthenticated));
     return null;
   }
@@ -318,37 +273,23 @@ class AuthCubit extends Cubit<AuthState> {
   /// message, or null on success.
   Future<String?> switchRole(UserRole role) async {
     if (state.user?.role == role) return null;
+    if (role != UserRole.seeker) {
+      return 'This account role must be assigned by Nesty after verification.';
+    }
     final result = await _updateProfile(UpdateProfileParams(role: role));
-    return result.fold(
-      (failure) => failure.message,
-      (user) {
-        if (user.role == role) {
-          // Server accepted it — it's the source of truth now.
-          _clearRoleOverride();
-          emit(state.copyWith(user: user));
-        } else {
-          // The backend can't store this role yet (feature not provisioned).
-          // Keep a local override so the app is fully usable now; the server
-          // takes over automatically once the migration is applied.
-          _setRoleOverride(user.id, role);
-          emit(state.copyWith(user: user.copyWith(role: role)));
-        }
-        return null;
-      },
-    );
+    return result.fold((failure) => failure.message, (user) {
+      if (user.role != role) return 'Could not update account role.';
+      emit(state.copyWith(user: user));
+      return null;
+    });
   }
 
   /// Updates the display name on the profile.
   Future<void> updateName(String fullName) async {
     final trimmed = fullName.trim();
     if (trimmed.isEmpty || trimmed == state.user?.fullName) return;
-    final result = await _updateProfile(
-      UpdateProfileParams(fullName: trimmed),
-    );
-    result.fold(
-      (_) {},
-      (user) => emit(state.copyWith(user: user)),
-    );
+    final result = await _updateProfile(UpdateProfileParams(fullName: trimmed));
+    result.fold((_) {}, (user) => emit(state.copyWith(user: user)));
   }
 
   /// Updates the profile avatar (an uploaded image URL). Returns an error, or
@@ -382,11 +323,13 @@ class AuthCubit extends Cubit<AuthState> {
     UserRole? expectedRole,
   }) async {
     _pendingProviderRole = expectedRole;
-    emit(state.copyWith(
-      status: AuthStatus.submitting,
-      clearError: true,
-      clearMismatch: true,
-    ));
+    emit(
+      state.copyWith(
+        status: AuthStatus.submitting,
+        clearError: true,
+        clearMismatch: true,
+      ),
+    );
     final result = await _repository.signInWithProvider(provider);
     return result.fold((f) {
       _pendingProviderRole = null;
@@ -407,11 +350,7 @@ class AuthCubit extends Cubit<AuthState> {
 /// * [error] set for bad credentials / network, or
 /// * [roleMismatch] true with [actualRole] for a wrong-space login.
 class AuthAttempt {
-  const AuthAttempt({
-    this.error,
-    this.roleMismatch = false,
-    this.actualRole,
-  });
+  const AuthAttempt({this.error, this.roleMismatch = false, this.actualRole});
 
   final String? error;
   final bool roleMismatch;

@@ -1,19 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-
-import '../../../../app/di/injection.dart';
 import '../../../../core/branding/app_icons.dart';
 import '../../../../core/format/money.dart';
 import '../../../../core/services/app_feedback.dart';
+import '../../../../core/services/supabase_service.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/widgets/motion/fade_slide_in.dart';
-import '../../../../core/widgets/motion/nesty_loader.dart';
 import '../../../../core/widgets/motion/typing_text.dart';
-import '../../../auth/domain/entities/user_role.dart';
-import '../../../auth/presentation/cubit/auth_cubit.dart';
-import '../../data/subscription_store.dart';
 import '../../domain/entities/subscription_plan.dart';
 
 /// Dark canvas + light ink, deliberately inverted from the rest of the app so
@@ -24,11 +18,8 @@ const Color _fg = AppColors.white;
 /// The Partner paywall — pick a tier and a billing cycle behind an online
 /// subscription. Two entry points:
 ///
-/// * **Onboarding** ([upgrade] = false): an unauthenticated seeker chose the
-///   Partner role. Confirming stashes the plan and continues to sign-up, where
-///   it's committed once the session lands.
-/// * **Upgrade** ([upgrade] = true): a signed-in seeker becomes a Partner.
-///   Confirming subscribes and switches their role in place.
+/// Partner activation stays unavailable until a trusted payment and account
+/// provisioning flow is configured on the server.
 ///
 /// Pushed with [Navigator] (not the router) so it works before authentication,
 /// when the router would otherwise redirect back to onboarding.
@@ -44,7 +35,6 @@ class PaywallPage extends StatefulWidget {
 class _PaywallPageState extends State<PaywallPage> {
   SubscriptionPlan _plan = SubscriptionPlan.premium;
   BillingCycle _billing = BillingCycle.monthly;
-  bool _busy = false;
 
   void _selectPlan(SubscriptionPlan p) {
     if (p == _plan) return;
@@ -60,31 +50,12 @@ class _PaywallPageState extends State<PaywallPage> {
 
   Future<void> _confirm() async {
     HapticFeedback.mediumImpact();
-    final store = sl<SubscriptionStore>();
-
-    if (!widget.upgrade) {
-      // Pre-sign-up: remember the choice and let onboarding continue to auth.
-      store.setPending(_plan, _billing);
-      Navigator.of(context).pop(true);
-      return;
-    }
-
-    // Signed-in upgrade: subscribe, then flip the role in place.
-    setState(() => _busy = true);
-    final authCubit = context.read<AuthCubit>();
-    final error = await store.subscribe(_plan, _billing);
-    final roleError = error == null
-        ? await authCubit.switchRole(UserRole.partner)
-        : null;
-    if (!mounted) return;
-    setState(() => _busy = false);
-    final failure = error ?? roleError;
-    if (failure != null) {
-      AppFeedback.error(context, failure);
-      return;
-    }
-    Navigator.of(context).pop(true);
-    AppFeedback.success(context, 'Welcome to Nesty Partner 🎉');
+    AppFeedback.error(
+      context,
+      SupabaseService.isReady
+          ? 'Partner plans need verified payment setup. Contact Nesty to request access.'
+          : 'Partner subscriptions are not available in demo mode.',
+    );
   }
 
   @override
@@ -158,8 +129,8 @@ class _PaywallPageState extends State<PaywallPage> {
                       FadeSlideIn(
                         delay: const Duration(milliseconds: 100),
                         child: Text(
-                          'List homes from your network, manage requests, and '
-                          'earn. Pick a plan.',
+                          'Partner accounts are activated by Nesty after '
+                          'business verification and payment setup.',
                           style: TextStyle(
                             color: _fg.withValues(alpha: 0.6),
                             fontSize: 15,
@@ -176,9 +147,11 @@ class _PaywallPageState extends State<PaywallPage> {
                         ),
                       ),
                       const SizedBox(height: AppSpacing.lg),
-                      for (int i = 0;
-                          i < SubscriptionPlan.values.length;
-                          i++) ...[
+                      for (
+                        int i = 0;
+                        i < SubscriptionPlan.values.length;
+                        i++
+                      ) ...[
                         FadeSlideIn(
                           delay: Duration(milliseconds: 180 + 60 * i),
                           child: _PlanRow(
@@ -206,17 +179,12 @@ class _PaywallPageState extends State<PaywallPage> {
                 ),
               ),
               _Footer(
-                label: isCustom
-                    ? 'Request access'
-                    : widget.upgrade
-                        ? 'Subscribe'
-                        : 'Continue',
+                label: 'Request access',
                 priceLine: isCustom
                     ? 'Custom pricing · we\'ll set you up'
                     : '${formatDinars(price!.toDouble())} / '
-                        '${_billing == BillingCycle.monthly ? 'month' : 'year'} '
-                        '· cancel anytime',
-                busy: _busy,
+                          '${_billing == BillingCycle.monthly ? 'month' : 'year'} '
+                          '· cancel anytime',
                 onTap: _confirm,
               ),
             ],
@@ -502,13 +470,11 @@ class _Footer extends StatelessWidget {
   const _Footer({
     required this.label,
     required this.priceLine,
-    required this.busy,
     required this.onTap,
   });
 
   final String label;
   final String priceLine;
-  final bool busy;
   final VoidCallback onTap;
 
   @override
@@ -521,9 +487,7 @@ class _Footer extends StatelessWidget {
         AppSpacing.lg,
       ),
       decoration: BoxDecoration(
-        border: Border(
-          top: BorderSide(color: _fg.withValues(alpha: 0.08)),
-        ),
+        border: Border(top: BorderSide(color: _fg.withValues(alpha: 0.08))),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -539,34 +503,28 @@ class _Footer extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.md),
           GestureDetector(
-            onTap: busy ? null : onTap,
-            child: AnimatedOpacity(
-              duration: const Duration(milliseconds: 150),
-              opacity: busy ? 0.7 : 1,
-              child: Container(
-                height: 54,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: _fg,
-                  borderRadius: BorderRadius.circular(AppRadius.pill),
-                ),
-                child: busy
-                    ? NestyLoader(size: 26, color: _bg)
-                    : Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            label,
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                              color: _bg,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          const Icon(AppIcons.forward, size: 18, color: _bg),
-                        ],
-                      ),
+            onTap: onTap,
+            child: Container(
+              height: 54,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: _fg,
+                borderRadius: BorderRadius.circular(AppRadius.pill),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    label,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: _bg,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  const Icon(AppIcons.forward, size: 18, color: _bg),
+                ],
               ),
             ),
           ),

@@ -17,14 +17,14 @@ class AppUserModel extends AppUser {
   factory AppUserModel.fromMap(Map<String, dynamic> map) {
     final metadata =
         (map['user_metadata'] as Map<String, dynamic>?) ?? const {};
-    final appMeta =
-        (map['app_metadata'] as Map<String, dynamic>?) ?? const {};
+    final appMeta = (map['app_metadata'] as Map<String, dynamic>?) ?? const {};
     return AppUserModel(
       id: map['id'] as String,
       email: (map['email'] as String?) ?? '',
       fullName: (map['full_name'] ?? metadata['full_name']) as String?,
       avatarUrl: (map['avatar_url'] ?? metadata['avatar_url']) as String?,
-      role: UserRoleX.fromId((map['role'] ?? metadata['role']) as String?),
+      // Role metadata is user-editable; missing profile data must fail closed.
+      role: UserRoleX.fromId(map['role'] as String?),
       bannedUntil: _parseDate(
         map['banned_until'] ?? appMeta['banned_until'] ?? appMeta['ban_until'],
       ),

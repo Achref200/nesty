@@ -77,11 +77,8 @@ class SubscriptionStore extends ChangeNotifier {
             .eq('user_id', uid)
             .maybeSingle();
         return row == null ? null : Subscription.fromMap(row);
-      } on PostgrestException catch (e) {
-        if (!_isSetupIssue(e)) rethrow;
-        // The subscriptions table isn't provisioned yet — read the on-device
-        // fallback so an already-subscribed Partner keeps their plan.
-        return _readLocal();
+      } on PostgrestException {
+        rethrow;
       }
     }
     return _readLocal();
@@ -101,19 +98,9 @@ class SubscriptionStore extends ChangeNotifier {
         final client = SupabaseService.client;
         final uid = client.auth.currentUser?.id;
         if (uid == null) return 'Please sign in to subscribe.';
-        try {
-          await client.from('subscriptions').upsert({
-            'user_id': uid,
-            ...sub.toMap(),
-            'price': plan.priceFor(billing),
-          });
-        } on PostgrestException catch (e) {
-          if (!_isSetupIssue(e)) return e.message;
-          // The Partner feature isn't provisioned on the server yet — keep the
-          // plan on-device so the app stays fully usable. Once the migration
-          // is applied, the server becomes the source of truth automatically.
-          await LocalStore.instance.setJson(_key, sub.toMap());
-        }
+        // A client-side subscription row is not proof of payment. Activation
+        // must come from a trusted payment webhook/server path.
+        return 'Partner subscriptions are not available yet. Contact Nesty to activate a verified plan.';
       } else {
         await LocalStore.instance.setJson(_key, sub.toMap());
       }
@@ -145,10 +132,10 @@ class SubscriptionStore extends ChangeNotifier {
         try {
           await client
               .from('subscriptions')
-              .update({'status': 'cancelled'}).eq('user_id', uid);
+              .update({'status': 'cancelled'})
+              .eq('user_id', uid);
         } on PostgrestException catch (e) {
-          if (!_isSetupIssue(e)) return e.message;
-          await LocalStore.instance.setJson(_key, cancelled.toMap());
+          return e.message;
         }
       } else {
         await LocalStore.instance.setJson(_key, cancelled.toMap());
@@ -159,20 +146,5 @@ class SubscriptionStore extends ChangeNotifier {
     } catch (_) {
       return 'Couldn\'t cancel right now. Please try again.';
     }
-  }
-
-  /// Whether a Postgrest error means the Partner feature simply isn't
-  /// provisioned on the server yet (missing table/column or a role/plan check
-  /// constraint from before the `20260717120000_partner_role.sql` migration).
-  /// In that case we fall back to on-device storage rather than failing.
-  bool _isSetupIssue(PostgrestException e) {
-    final msg = e.message.toLowerCase();
-    return e.code == 'PGRST205' ||
-        e.code == '42P01' || // undefined_table
-        e.code == '42703' || // undefined_column
-        e.code == '23514' || // check_violation (profiles role / plan)
-        msg.contains('schema cache') ||
-        msg.contains('could not find the table') ||
-        msg.contains('does not exist');
   }
 }
