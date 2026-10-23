@@ -6,18 +6,14 @@ import 'listing_remote_data_source.dart';
 
 /// Reads listings from the shared `listings` table in Supabase.
 ///
-/// Expected columns match [PropertyModel.fromMap]. Everything returned here
-/// feeds the traveller catalog: published real listings and clearly marked
-/// non-bookable demo previews.
+/// Expected columns match [PropertyModel.fromMap]. The traveller catalog only
+/// receives published, bookable listings.
 class SupabaseListingRemoteDataSource implements ListingRemoteDataSource {
   const SupabaseListingRemoteDataSource(this._client);
 
   final SupabaseClient _client;
 
   static const _table = 'listings';
-  static const _publicCatalogFilter =
-      'and(status.in.(published,active),is_demo.eq.false),'
-      'and(status.eq.draft,is_demo.eq.true)';
 
   /// The home feed uses camelCase category ids ('entirePlace', 'sharedRoom',
   /// 'privateRoom') but the `listings.type` column stores snake_case. Map
@@ -31,9 +27,12 @@ class SupabaseListingRemoteDataSource implements ListingRemoteDataSource {
   @override
   Future<List<PropertyModel>> getListings({String? category}) async {
     try {
-      // Keep the live inventory and marked demo previews in one catalog. Demo
-      // rows remain drafts and the UI makes them non-bookable.
-      final query = _client.from(_table).select().or(_publicCatalogFilter);
+      // Keep unpublished and synthetic rows out of the traveller catalog.
+      final query = _client
+          .from(_table)
+          .select()
+          .inFilter('status', ['published', 'active'])
+          .eq('is_demo', false);
       final dbType = _typeByCategory[category];
       final rows = await (dbType == null ? query : query.eq('type', dbType));
       return (rows as List)
@@ -51,7 +50,8 @@ class SupabaseListingRemoteDataSource implements ListingRemoteDataSource {
           .from(_table)
           .select()
           .eq('id', id)
-          .or(_publicCatalogFilter)
+          .inFilter('status', ['published', 'active'])
+          .eq('is_demo', false)
           .single();
       return PropertyModel.fromMap(row);
     } catch (e) {
