@@ -120,10 +120,7 @@ class _CreateListingPageState extends State<CreateListingPage> {
     }
     final price = double.tryParse(_price.text.trim());
     if (price == null || price <= 0) {
-      return context.copy(
-        'Enter a price in DT.',
-        'Saisissez un prix en DT.',
-      );
+      return context.copy('Enter a price in DT.', 'Saisissez un prix en DT.');
     }
     // Same check the dashboard runs — eight local digits, +216 optional.
     final phone = _phone.text.trim();
@@ -400,9 +397,9 @@ class _CreateListingPageState extends State<CreateListingPage> {
                     child: Text(
                       context.copy(
                         'A few details and a cover — we wire the rooms into a '
-                        '3D walkthrough so seekers can tour before they visit.',
+                            '3D walkthrough so seekers can tour before they visit.',
                         'Quelques détails et une couverture — nous assemblons '
-                        'les pièces en visite 3D pour explorer avant de venir.',
+                            'les pièces en visite 3D pour explorer avant de venir.',
                       ),
                       style: theme.textTheme.bodyMedium,
                     ),
@@ -423,9 +420,9 @@ class _CreateListingPageState extends State<CreateListingPage> {
                   Text(
                     context.copy(
                       'Import your own photos — they power the 3D tour. Tap one to '
-                      'set the cover.',
+                          'set the cover.',
                       'Importez vos photos — elles alimentent la visite 3D. '
-                      'Touchez-en une pour définir la couverture.',
+                          'Touchez-en une pour définir la couverture.',
                     ),
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: AppColors.secondaryLabel,
@@ -503,7 +500,12 @@ class _CreateListingPageState extends State<CreateListingPage> {
                   ),
                   const SizedBox(height: AppSpacing.xl),
 
-                  _Label(context.copy('What are you listing?', 'Que proposez-vous ?')),
+                  _Label(
+                    context.copy(
+                      'What are you listing?',
+                      'Que proposez-vous ?',
+                    ),
+                  ),
                   const SizedBox(height: AppSpacing.sm),
                   _TypeSelector(
                     type: _type,
@@ -734,7 +736,10 @@ class _CreateListingPageState extends State<CreateListingPage> {
                   const SizedBox(height: AppSpacing.xl),
 
                   _Label(
-                    context.copy('Cancellation policy', 'Politique d\'annulation'),
+                    context.copy(
+                      'Cancellation policy',
+                      'Politique d\'annulation',
+                    ),
                   ),
                   const SizedBox(height: AppSpacing.sm),
                   Wrap(
@@ -951,51 +956,52 @@ class _CoverPicker extends StatelessWidget {
                   color: active ? AppColors.ink : AppColors.separator,
                   width: active ? 2 : 0.5,
                 ),
-                image: DecorationImage(
-                  image: appImageProvider(covers[i]),
-                  fit: BoxFit.cover,
-                ),
               ),
-              child: Stack(
-                children: [
-                  if (active)
-                    Align(
-                      alignment: Alignment.topRight,
-                      child: Container(
-                        margin: const EdgeInsets.all(6),
-                        padding: const EdgeInsets.all(3),
-                        decoration: const BoxDecoration(
-                          color: AppColors.ink,
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.check_rounded,
-                          size: 14,
-                          color: AppColors.onAccent,
-                        ),
-                      ),
-                    ),
-                  if (isImported)
-                    Align(
-                      alignment: Alignment.topLeft,
-                      child: GestureDetector(
-                        onTap: () => onRemovePhoto(i),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(AppRadius.md),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    AppImage(covers[i], fit: BoxFit.cover),
+                    if (active)
+                      Align(
+                        alignment: Alignment.topRight,
                         child: Container(
                           margin: const EdgeInsets.all(6),
                           padding: const EdgeInsets.all(3),
                           decoration: const BoxDecoration(
-                            color: Colors.black54,
+                            color: AppColors.ink,
                             shape: BoxShape.circle,
                           ),
                           child: const Icon(
-                            Icons.close_rounded,
+                            Icons.check_rounded,
                             size: 14,
-                            color: Colors.white,
+                            color: AppColors.onAccent,
                           ),
                         ),
                       ),
-                    ),
-                ],
+                    if (isImported)
+                      Align(
+                        alignment: Alignment.topLeft,
+                        child: GestureDetector(
+                          onTap: () => onRemovePhoto(i),
+                          child: Container(
+                            margin: const EdgeInsets.all(6),
+                            padding: const EdgeInsets.all(3),
+                            decoration: const BoxDecoration(
+                              color: Colors.black54,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.close_rounded,
+                              size: 14,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
               ),
             ),
           );
@@ -1217,7 +1223,7 @@ class _RuleSwitch extends StatelessWidget {
           ),
           Switch.adaptive(
             value: value,
-            activeColor: AppColors.ink,
+            activeThumbColor: AppColors.ink,
             onChanged: (v) {
               HapticFeedback.selectionClick();
               onChanged(v);

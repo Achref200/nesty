@@ -18,6 +18,27 @@ $$;
 revoke all on function public.is_super_admin() from public, anon;
 grant execute on function public.is_super_admin() to authenticated, service_role;
 
+-- These policies do not need anonymous API traffic. Keep the helper used by
+-- staff tools inside signed-in sessions, across policies defined by all apps.
+do $$
+declare
+  p record;
+begin
+  for p in
+    select tablename, policyname
+      from pg_policies
+     where schemaname = 'public'
+       and (coalesce(qual, '') || coalesce(with_check, '')) ilike '%is_super_admin%'
+  loop
+    execute format(
+      'alter policy %I on public.%I to authenticated',
+      p.policyname,
+      p.tablename
+    );
+  end loop;
+end;
+$$;
+
 -- New self-service accounts always start as seekers. Agency roles are written
 -- by Nesty Base's service-role provisioning path, never from user metadata.
 create or replace function public.handle_new_user()
@@ -73,8 +94,11 @@ create trigger profiles_prevent_self_role_promotion
   for each row execute function public.prevent_self_role_promotion();
 
 drop policy if exists "Profiles are viewable by everyone" on public.profiles;
+drop policy if exists profiles_select on public.profiles;
 drop policy if exists "Users can insert their own profile" on public.profiles;
+drop policy if exists profiles_insert on public.profiles;
 drop policy if exists "Users can update their own profile" on public.profiles;
+drop policy if exists profiles_update on public.profiles;
 
 create policy "Users and Nesty admins can read profiles"
   on public.profiles for select to authenticated
@@ -108,14 +132,17 @@ as $$
   end;
 $$;
 revoke all on function public.is_account_active(uuid) from public, anon;
-grant execute on function public.is_account_active(uuid) to authenticated, service_role;
+grant execute on function public.is_account_active(uuid) to service_role;
 
 -- Profiles are no longer public; public listing cards use listings.host_name.
 -- Public listing reads remain enabled, while listing mutations require a
 -- provisioned agency or an active Partner subscription.
 drop policy if exists "Hosts can insert their own listings" on public.listings;
+drop policy if exists listings_insert on public.listings;
 drop policy if exists "Hosts can update their own listings" on public.listings;
+drop policy if exists listings_update on public.listings;
 drop policy if exists "Hosts can delete their own listings" on public.listings;
+drop policy if exists listings_delete on public.listings;
 
 create policy "Agencies and active partners can publish listings"
   on public.listings for insert to authenticated
@@ -241,3 +268,31 @@ begin
   return new;
 end;
 $$;
+
+-- These are trigger-only or server-only entry points. In particular, closing
+-- claim_first_admin prevents an unauthenticated first-user bootstrap from ever
+-- being callable through PostgREST. Nesty Base provisions staff server-side.
+revoke all on function public.claim_first_admin(text) from public, anon, authenticated;
+revoke all on function public.handle_new_user() from public, anon, authenticated;
+revoke all on function public.notify_guest_reservation_status() from public, anon, authenticated;
+revoke all on function public.notify_host_new_reservation() from public, anon, authenticated;
+revoke all on function public.notify_member_verification_decision() from public, anon, authenticated;
+revoke all on function public.set_event_host() from public, anon, authenticated;
+revoke all on function public.set_reservation_host() from public, anon, authenticated;
+revoke all on function public.sync_profile_verified() from public, anon, authenticated;
+revoke all on function public.is_account_active(uuid) from public, anon;
+grant execute on function public.is_account_active(uuid) to authenticated, service_role;
+revoke all on function public.submit_verification(text, text, text, text, text, text)
+  from public, anon;
+grant execute on function public.submit_verification(text, text, text, text, text, text)
+  to authenticated, service_role;
+
+-- Pin every live SECURITY DEFINER function to a fixed, empty search path. Their
+-- table references are schema-qualified in their definitions.
+alter function public.claim_first_admin(text) set search_path = '';
+alter function public.notify_guest_reservation_status() set search_path = '';
+alter function public.notify_host_new_reservation() set search_path = '';
+alter function public.notify_member_verification_decision() set search_path = '';
+alter function public.set_event_host() set search_path = '';
+alter function public.submit_verification(text, text, text, text, text, text) set search_path = '';
+alter function public.sync_profile_verified() set search_path = '';

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../app/di/injection.dart';
 import '../../../../app/router/app_routes.dart';
@@ -199,9 +200,12 @@ class _SettingsPageState extends State<SettingsPage> {
           const SizedBox(height: AppSpacing.sm),
           _NavTile(
             icon: AppIcons.trash,
-            title: context.copy('Delete account', 'Supprimer le compte'),
+            title: context.copy(
+              'Request account deletion',
+              'Demander la suppression du compte',
+            ),
             danger: true,
-            onTap: () => _confirmDeleteAccount(context),
+            onTap: () => _requestAccountDeletion(context),
           ),
           const SizedBox(height: AppSpacing.xxl),
 
@@ -219,23 +223,22 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  /// Confirms and performs permanent account deletion. On success the session
-  /// ends and the router returns to the welcome flow.
-  void _confirmDeleteAccount(BuildContext context) {
-    final cubit = context.read<AuthCubit>();
+  /// Opens a deletion request email. Support confirms it before any account
+  /// data is removed.
+  void _requestAccountDeletion(BuildContext context) {
     showDialog<void>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         icon: const Icon(AppIcons.trash, color: AppColors.danger),
         title: Text(context.copy(
-          'Delete your account?',
-          'Supprimer votre compte ?',
+          'Request account deletion?',
+          'Demander la suppression du compte ?',
         )),
         content: Text(context.copy(
-          'This permanently removes your account, your listings, reservations '
-              'and saved homes. This can\'t be undone.',
-          'Ceci supprime définitivement votre compte, vos annonces, vos '
-              'réservations et vos favoris. Cette action est irréversible.',
+          'Your account stays active until Nesty Support confirms your request. '
+              'Send an email to support@nesty.tn from your account email.',
+          'Votre compte reste actif jusqu\'a la confirmation du support Nesty. '
+              'Ecrivez a support@nesty.tn depuis votre adresse de compte.',
         )),
         actions: [
           TextButton(
@@ -243,33 +246,36 @@ class _SettingsPageState extends State<SettingsPage> {
             child: Text(context.copy('Cancel', 'Annuler')),
           ),
           FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.danger,
-              foregroundColor: AppColors.onAccent,
-            ),
             onPressed: () async {
               Navigator.of(dialogContext).pop();
-              final error = await cubit.deleteAccount();
-              if (!context.mounted) return;
-              if (error != null) {
-                AppFeedback.errorToast(context, error);
-              } else {
-                AppFeedback.success(
+              final uri = Uri(
+                scheme: 'mailto',
+                path: 'support@nesty.tn',
+                queryParameters: {
+                  'subject': 'Nesty account deletion request',
+                  'body': 'Please help me delete my Nesty account.',
+                },
+              );
+              final opened = await launchUrl(
+                uri,
+                mode: LaunchMode.externalApplication,
+              );
+              if (!opened && context.mounted) {
+                AppFeedback.errorToast(
                   context,
                   context.copy(
-                    'Your account has been deleted.',
-                    'Votre compte a été supprimé.',
+                    'Could not open email. Contact support@nesty.tn.',
+                    'Impossible d\'ouvrir votre email. Contactez support@nesty.tn.',
                   ),
                 );
               }
             },
-            child: Text(context.copy('Delete', 'Supprimer')),
+            child: Text(context.copy('Email support', 'Contacter le support')),
           ),
         ],
       ),
     );
   }
-
   void _pickLanguage() {
     const options = ['English', 'Français'];
     showModalBottomSheet<void>(

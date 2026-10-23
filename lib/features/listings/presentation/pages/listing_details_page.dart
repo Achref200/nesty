@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -120,13 +121,23 @@ class _Content extends StatelessWidget {
                     ),
                   ),
                 if (property.isDemo) const SizedBox(height: AppSpacing.lg),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(AppRadius.lg),
-                  child: AspectRatio(
-                    aspectRatio: 16 / 11,
-                    child: Hero(
-                      tag: 'property-image-${property.id}',
-                      child: AppImage(property.coverImage, fit: BoxFit.cover),
+                Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 1040),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(AppRadius.lg),
+                      child: AspectRatio(
+                        aspectRatio: 16 / 11,
+                        child: kIsWeb
+                            ? AppImage(property.coverImage, fit: BoxFit.cover)
+                            : Hero(
+                                tag: 'property-image-${property.id}',
+                                child: AppImage(
+                                  property.coverImage,
+                                  fit: BoxFit.cover,
+                                ),
+                              ),
+                      ),
                     ),
                   ),
                 ),

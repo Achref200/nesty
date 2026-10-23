@@ -315,7 +315,7 @@ class _AvatarEditorState extends State<_AvatarEditor> {
         File(x.path),
         folder: 'nesty/avatars',
       );
-      return cubit.updateAvatar(url);
+      return await cubit.updateAvatar(url);
     } on CloudinaryException catch (e) {
       return e.message;
     } catch (_) {

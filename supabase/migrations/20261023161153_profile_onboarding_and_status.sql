@@ -1,6 +1,5 @@
 -- ============================================================================
--- Nesty — profile onboarding answers, optional ban flags, and self-service
--- account deletion.
+-- Nesty — profile onboarding answers and optional ban flags.
 --
 -- Run in the Supabase SQL editor (or `supabase db push`) after the existing
 -- migrations. Everything here is additive and idempotent.
@@ -36,35 +35,16 @@ stable
 security definer
 set search_path = ''
 as $$
-  select coalesce(
-    (
-      select
-        p.status = 'active'
-        and (p.banned_until is null or p.banned_until <= now())
-      from public.profiles p
-      where p.id = p_id
-    ),
-    true
-  );
+  select case
+    when auth.uid() is null then false
+    when auth.uid() <> p_id and not public.is_super_admin() then false
+    else coalesce((
+      select p.status = 'active'
+         and (p.banned_until is null or p.banned_until <= now())
+        from public.profiles p
+       where p.id = p_id
+    ), false)
+  end;
 $$;
-
--- --------------------------------------------- self-service deletion ----------
--- Lets a signed-in member permanently delete their own account from the app's
--- Settings. Deleting the auth.users row cascades to profiles, listings,
--- reservations, saved_listings, etc. via their `on delete cascade` FKs.
-create or replace function public.delete_own_account()
-returns void
-language plpgsql
-security definer
-set search_path = ''
-as $$
-begin
-  if auth.uid() is null then
-    raise exception 'Not authenticated';
-  end if;
-  delete from auth.users where id = auth.uid();
-end;
-$$;
-
-revoke all on function public.delete_own_account() from public;
-grant execute on function public.delete_own_account() to authenticated;
+revoke all on function public.is_account_active(uuid) from public, anon;
+grant execute on function public.is_account_active(uuid) to service_role;

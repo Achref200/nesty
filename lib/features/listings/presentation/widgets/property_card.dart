@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -34,6 +35,7 @@ class _PropertyCardState extends State<PropertyCard> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final property = widget.property;
+    final cover = AppImage(property.coverImage, fit: BoxFit.cover);
     return NeuTappable(
       onTap: widget.onTap,
       borderRadius: AppRadius.lg,
@@ -48,13 +50,15 @@ class _PropertyCardState extends State<PropertyCard> {
                 borderRadius: BorderRadius.circular(AppRadius.md),
                 child: AspectRatio(
                   aspectRatio: 16 / 11,
-                  child: Hero(
-                    tag: 'property-image-${property.id}',
-                    child: ParallaxImage(
-                      itemKey: _imageKey,
-                      child: AppImage(property.coverImage, fit: BoxFit.cover),
-                    ),
-                  ),
+                  child: kIsWeb
+                      ? cover
+                      : Hero(
+                          tag: 'property-image-${property.id}',
+                          child: ParallaxImage(
+                            itemKey: _imageKey,
+                            child: cover,
+                          ),
+                        ),
                 ),
               ),
               if (property.isDemo)

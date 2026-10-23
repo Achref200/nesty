@@ -113,13 +113,13 @@ class ReservationsStore extends ChangeNotifier {
     super.dispose();
   }
 
-  /// Periods an agency has closed off by hand. The select policy is public, so
-  /// a seeker can read them too and see the dates greyed out before asking.
+  /// Periods an agency has closed off by hand. Seekers use a public view that
+  /// returns listing ids and dates without exposing internal host ids/reasons.
   Future<void> _loadBlocks() async {
     if (!_remote) return;
     try {
       final rows = await _client
-          .from('availability_blocks')
+          .from('public_listing_availability')
           .select('id, listing_id, start_date, end_date');
       _blocks
         ..clear()
