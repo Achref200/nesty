@@ -100,6 +100,26 @@ class _Content extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: AppSpacing.lg),
+                if (property.isDemo)
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(AppSpacing.md),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFF1C2),
+                      borderRadius: BorderRadius.circular(AppRadius.md),
+                    ),
+                    child: Text(
+                      context.copy(
+                        'DEMO PREVIEW: this home, its photos, price and details are fictional examples. It is not available and cannot be booked.',
+                        'APERÇU DÉMO : ce logement, ses photos, son prix et ses caractéristiques sont fictifs. Il n’est pas disponible et ne peut pas être réservé.',
+                      ),
+                      style: const TextStyle(
+                        color: AppColors.ink,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                if (property.isDemo) const SizedBox(height: AppSpacing.lg),
                 ClipRRect(
                   borderRadius: BorderRadius.circular(AppRadius.lg),
                   child: AspectRatio(
@@ -150,10 +170,11 @@ class _Content extends StatelessWidget {
                   child: _Facts(property: property),
                 ),
                 const SizedBox(height: AppSpacing.lg),
-                FadeSlideIn(
-                  delay: const Duration(milliseconds: 190),
-                  child: const TrustSection(),
-                ),
+                if (!property.isDemo)
+                  FadeSlideIn(
+                    delay: const Duration(milliseconds: 190),
+                    child: const TrustSection(),
+                  ),
                 const SizedBox(height: AppSpacing.xl),
                 FadeSlideIn(
                   delay: const Duration(milliseconds: 260),
@@ -161,7 +182,10 @@ class _Content extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        context.copy('About this place', 'À propos du logement'),
+                        context.copy(
+                          'About this place',
+                          'À propos du logement',
+                        ),
                         style: theme.textTheme.titleMedium,
                       ),
                       const SizedBox(height: AppSpacing.sm),
@@ -175,7 +199,7 @@ class _Content extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: AppSpacing.lg),
-                if (AiConfig.enabled)
+                if (AiConfig.enabled && !property.isDemo)
                   FadeSlideIn(
                     delay: const Duration(milliseconds: 290),
                     child: _AskAiCard(property: property),
@@ -206,13 +230,14 @@ class _Content extends StatelessWidget {
                   child: NeighborhoodSection(property: property),
                 ),
                 const SizedBox(height: AppSpacing.xl),
-                FadeSlideIn(
-                  delay: const Duration(milliseconds: 360),
-                  child: _HostRow(
-                    hostName: property.hostName,
-                    type: property.type,
+                if (!property.isDemo)
+                  FadeSlideIn(
+                    delay: const Duration(milliseconds: 360),
+                    child: _HostRow(
+                      hostName: property.hostName,
+                      type: property.type,
+                    ),
                   ),
-                ),
               ],
             ),
           ),
@@ -319,11 +344,7 @@ class _StayTerms extends StatelessWidget {
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(
-                        line.icon,
-                        size: 18,
-                        color: AppColors.textSecondary,
-                      ),
+                      Icon(line.icon, size: 18, color: AppColors.textSecondary),
                       const SizedBox(width: AppSpacing.md),
                       Expanded(
                         child: Text(
@@ -382,9 +403,17 @@ class _Facts extends StatelessWidget {
             ),
             _divider(),
           ],
-          _Fact(AppIcons.bed, '${property.bedrooms}', context.copy('Bedrooms', 'Chambres')),
+          _Fact(
+            AppIcons.bed,
+            '${property.bedrooms}',
+            context.copy('Bedrooms', 'Chambres'),
+          ),
           _divider(),
-          _Fact(AppIcons.bath, '${property.bathrooms}', context.copy('Bathrooms', 'Salles de bain')),
+          _Fact(
+            AppIcons.bath,
+            '${property.bathrooms}',
+            context.copy('Bathrooms', 'Salles de bain'),
+          ),
           if (property.areaSqm > 0) ...[
             _divider(),
             _Fact(
@@ -669,8 +698,12 @@ class _BottomBar extends StatelessWidget {
                 const SizedBox(height: 3),
                 Text(
                   context.copy(
-                    'Free to request · you pick the dates',
-                    'Demande gratuite · vous choisissez les dates',
+                    property.isDemo
+                        ? 'Illustrative sample only · no real availability'
+                        : 'Free to request · you pick the dates',
+                    property.isDemo
+                        ? 'Exemple illustratif · aucune disponibilité réelle'
+                        : 'Demande gratuite · vous choisissez les dates',
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -685,10 +718,12 @@ class _BottomBar extends StatelessWidget {
           ),
           const SizedBox(width: AppSpacing.md),
           NeuButton(
-            label: context.copy('Reserve', 'Réserver'),
-            icon: AppIcons.calendar,
+            label: property.isDemo
+                ? context.copy('Not bookable', 'Non réservable')
+                : context.copy('Reserve', 'Réserver'),
+            icon: property.isDemo ? null : AppIcons.calendar,
             expand: false,
-            onPressed: () => _reserve(context),
+            onPressed: property.isDemo ? null : () => _reserve(context),
           ),
         ],
       ),
@@ -701,10 +736,12 @@ class _BottomBar extends StatelessWidget {
     if (created && context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(context.copy(
-            'Request sent — track it in Trips.',
-            'Demande envoyée — suivez-la dans Voyages.',
-          )),
+          content: Text(
+            context.copy(
+              'Request sent — track it in Trips.',
+              'Demande envoyée — suivez-la dans Voyages.',
+            ),
+          ),
           behavior: SnackBarBehavior.floating,
         ),
       );

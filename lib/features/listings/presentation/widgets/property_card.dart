@@ -57,6 +57,55 @@ class _PropertyCardState extends State<PropertyCard> {
                   ),
                 ),
               ),
+              if (property.isDemo)
+                Positioned(
+                  left: AppSpacing.md,
+                  top: AppSpacing.md,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFE082),
+                      borderRadius: BorderRadius.circular(AppRadius.pill),
+                    ),
+                    child: Text(
+                      context.copy(
+                        'DEMO · NOT BOOKABLE',
+                        'DÉMO · NON RÉSERVABLE',
+                      ),
+                      style: const TextStyle(
+                        color: AppColors.ink,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ),
+              if (property.isDemo)
+                Positioned(
+                  left: AppSpacing.md,
+                  bottom: AppSpacing.md,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 9,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.black.withValues(alpha: 0.7),
+                      borderRadius: BorderRadius.circular(AppRadius.pill),
+                    ),
+                    child: Text(
+                      context.copy('Illustrative photo', 'Photo illustrative'),
+                      style: const TextStyle(
+                        color: AppColors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ),
               Positioned(
                 right: AppSpacing.md,
                 top: AppSpacing.md,

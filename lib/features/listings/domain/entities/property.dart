@@ -47,9 +47,10 @@ extension RentalTermX on RentalTerm {
   String blurbFor(bool french) => switch (this) {
     RentalTerm.shortTerm =>
       french ? 'Séjours d\'été & vacances' : 'Summer & vacation stays',
-    RentalTerm.longTerm => french
-        ? 'Un an ou plus — étudiants & familles'
-        : 'A year or more — students & families',
+    RentalTerm.longTerm =>
+      french
+          ? 'Un an ou plus — étudiants & familles'
+          : 'A year or more — students & families',
   };
 
   static RentalTerm fromId(String? value) => switch (value) {
@@ -95,6 +96,7 @@ class Property extends Equatable {
     this.rules = const HouseRules(),
     this.pricing = const ListingPricing(),
     this.conditions = const BookingConditions(),
+    this.isDemo = false,
   });
 
   final String id;
@@ -160,6 +162,7 @@ class Property extends Equatable {
   final HouseRules rules;
   final ListingPricing pricing;
   final BookingConditions conditions;
+  final bool isDemo;
 
   Property copyWith({bool? isFavorite}) {
     return Property(
@@ -198,6 +201,7 @@ class Property extends Equatable {
       rules: rules,
       pricing: pricing,
       conditions: conditions,
+      isDemo: isDemo,
     );
   }
 
@@ -211,5 +215,5 @@ class Property extends Equatable {
       pricing.amount > 0 ? pricing.model : PricingModel.month;
 
   @override
-  List<Object?> get props => [id, isFavorite];
+  List<Object?> get props => [id, isFavorite, isDemo];
 }

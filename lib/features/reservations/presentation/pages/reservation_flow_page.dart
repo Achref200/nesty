@@ -26,6 +26,7 @@ Future<bool> startReservationFlow(
   BuildContext context,
   Property property,
 ) async {
+  if (property.isDemo) return false;
   final result = await Navigator.of(context).push<bool>(
     softPageRoute(_ReservationFlow(property: property), fullscreenDialog: true),
   );
@@ -255,11 +256,18 @@ class _ReservationFlowState extends State<_ReservationFlow> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(context.copy('What would you like to do?', 'Que souhaitez-vous faire ?'),
-            style: Theme.of(context).textTheme.headlineMedium),
+        Text(
+          context.copy(
+            'What would you like to do?',
+            'Que souhaitez-vous faire ?',
+          ),
+          style: Theme.of(context).textTheme.headlineMedium,
+        ),
         const SizedBox(height: AppSpacing.xs),
-        Text(widget.property.title,
-            style: Theme.of(context).textTheme.bodyMedium),
+        Text(
+          widget.property.title,
+          style: Theme.of(context).textTheme.bodyMedium,
+        ),
         const SizedBox(height: AppSpacing.xl),
         _TypeCard(
           icon: AppIcons.visit,
@@ -345,18 +353,22 @@ class _ReservationFlowState extends State<_ReservationFlow> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(context.copy('A few details', 'Quelques détails'),
-            style: Theme.of(context).textTheme.headlineMedium),
+        Text(
+          context.copy('A few details', 'Quelques détails'),
+          style: Theme.of(context).textTheme.headlineMedium,
+        ),
         const SizedBox(height: AppSpacing.xl),
         _GuestsStepper(
           value: _guests,
           onChanged: (v) => setState(() => _guests = v),
         ),
         const SizedBox(height: AppSpacing.lg),
-        _MiniLabel(context.copy(
-          'Note for the agency (optional)',
-          'Note pour l\'agence (facultatif)',
-        )),
+        _MiniLabel(
+          context.copy(
+            'Note for the agency (optional)',
+            'Note pour l\'agence (facultatif)',
+          ),
+        ),
         const SizedBox(height: AppSpacing.sm),
         NeuField(
           controller: _note,
@@ -381,8 +393,10 @@ class _ReservationFlowState extends State<_ReservationFlow> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(context.copy('Review your request', 'Vérifiez votre demande'),
-            style: theme.textTheme.headlineMedium),
+        Text(
+          context.copy('Review your request', 'Vérifiez votre demande'),
+          style: theme.textTheme.headlineMedium,
+        ),
         const SizedBox(height: AppSpacing.xl),
         Container(
           padding: const EdgeInsets.all(AppSpacing.lg),
@@ -465,15 +479,24 @@ class _ReservationFlowState extends State<_ReservationFlow> {
                 color: AppColors.ink,
                 shape: BoxShape.circle,
               ),
-              child: const Icon(AppIcons.check,
-                  color: AppColors.onAccent, size: 40),
+              child: const Icon(
+                AppIcons.check,
+                color: AppColors.onAccent,
+                size: 40,
+              ),
             ),
           ),
           const SizedBox(height: AppSpacing.xl),
           TypingText(
             _type == ReservationType.visit
-                ? context.copy('Your visit is requested.', 'Votre visite est demandée.')
-                : context.copy('Your dates are on hold.', 'Vos dates sont réservées.'),
+                ? context.copy(
+                    'Your visit is requested.',
+                    'Votre visite est demandée.',
+                  )
+                : context.copy(
+                    'Your dates are on hold.',
+                    'Vos dates sont réservées.',
+                  ),
             textAlign: TextAlign.center,
             style: theme.textTheme.headlineMedium,
             startDelay: const Duration(milliseconds: 260),
@@ -537,12 +560,17 @@ class _ReservationFlowState extends State<_ReservationFlow> {
     padding: const EdgeInsets.only(top: AppSpacing.lg),
     child: Row(
       children: [
-        const Icon(Icons.error_outline_rounded,
-            size: 16, color: AppColors.danger),
+        const Icon(
+          Icons.error_outline_rounded,
+          size: 16,
+          color: AppColors.danger,
+        ),
         const SizedBox(width: 6),
         Expanded(
-          child: Text(text,
-              style: const TextStyle(color: AppColors.danger, fontSize: 13)),
+          child: Text(
+            text,
+            style: const TextStyle(color: AppColors.danger, fontSize: 13),
+          ),
         ),
       ],
     ),
@@ -550,8 +578,18 @@ class _ReservationFlowState extends State<_ReservationFlow> {
 
   static String _formatDate(DateTime d) {
     const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
     return '${d.day} ${months[d.month - 1]}';
   }
@@ -657,9 +695,11 @@ class _TypeCard extends StatelessWidget {
                     : AppColors.fill,
                 borderRadius: BorderRadius.circular(AppRadius.sm),
               ),
-              child: Icon(icon,
-                  size: 20,
-                  color: selected ? AppColors.onAccent : AppColors.ink),
+              child: Icon(
+                icon,
+                size: 20,
+                color: selected ? AppColors.onAccent : AppColors.ink,
+              ),
             ),
             const SizedBox(width: AppSpacing.md),
             Expanded(
@@ -723,11 +763,16 @@ class _PickerRow extends StatelessWidget {
             Icon(icon, size: 20, color: AppColors.ink),
             const SizedBox(width: AppSpacing.md),
             Expanded(
-              child: Text(label,
-                  style: const TextStyle(fontWeight: FontWeight.w600)),
+              child: Text(
+                label,
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
             ),
-            const Icon(AppIcons.chevronRight,
-                color: AppColors.tertiaryLabel, size: 18),
+            const Icon(
+              AppIcons.chevronRight,
+              color: AppColors.tertiaryLabel,
+              size: 18,
+            ),
           ],
         ),
       ),
@@ -754,8 +799,10 @@ class _Chip extends StatelessWidget {
       },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 160),
-        padding:
-            const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: 11),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.lg,
+          vertical: 11,
+        ),
         decoration: BoxDecoration(
           color: selected ? AppColors.ink : AppColors.fill,
           borderRadius: BorderRadius.circular(AppRadius.pill),
@@ -798,23 +845,35 @@ class _TotalRow extends StatelessWidget {
               Text(
                 '${formatDinars(nightly)} × $nights ${nights == 1 ? context.copy('night', 'nuit') : context.copy('nights', 'nuits')}',
                 style: const TextStyle(
-                    color: AppColors.secondaryLabel, fontSize: 13),
+                  color: AppColors.secondaryLabel,
+                  fontSize: 13,
+                ),
               ),
               const Spacer(),
-              Text(formatDinars(total),
-                  style: const TextStyle(
-                      fontWeight: FontWeight.w600, fontSize: 13)),
+              Text(
+                formatDinars(total),
+                style: const TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                ),
+              ),
             ],
           ),
           const Divider(height: AppSpacing.lg),
           Row(
             children: [
-              Text(context.copy('Estimated total', 'Total estimé'),
-                  style: const TextStyle(fontWeight: FontWeight.w700)),
+              Text(
+                context.copy('Estimated total', 'Total estimé'),
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
               const Spacer(),
-              Text(formatDinars(total),
-                  style: const TextStyle(
-                      fontWeight: FontWeight.w800, fontSize: 16)),
+              Text(
+                formatDinars(total),
+                style: const TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 16,
+                ),
+              ),
             ],
           ),
         ],
@@ -832,7 +891,9 @@ class _GuestsStepper extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.lg, vertical: AppSpacing.sm),
+        horizontal: AppSpacing.lg,
+        vertical: AppSpacing.sm,
+      ),
       decoration: BoxDecoration(
         color: AppColors.fill,
         borderRadius: BorderRadius.circular(AppRadius.md),
@@ -840,22 +901,27 @@ class _GuestsStepper extends StatelessWidget {
       child: Row(
         children: [
           Expanded(
-            child: Text(context.copy('Guests', 'Voyageurs'),
-                style: const TextStyle(fontWeight: FontWeight.w600)),
+            child: Text(
+              context.copy('Guests', 'Voyageurs'),
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
           ),
           _RoundBtn(
-              icon: AppIcons.minus,
-              onTap: value > 1 ? () => onChanged(value - 1) : null),
+            icon: AppIcons.minus,
+            onTap: value > 1 ? () => onChanged(value - 1) : null,
+          ),
           SizedBox(
             width: 40,
-            child: Text('$value',
-                textAlign: TextAlign.center,
-                style:
-                    const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+            child: Text(
+              '$value',
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+            ),
           ),
           _RoundBtn(
-              icon: AppIcons.add,
-              onTap: value < 16 ? () => onChanged(value + 1) : null),
+            icon: AppIcons.add,
+            onTap: value < 16 ? () => onChanged(value + 1) : null,
+          ),
         ],
       ),
     );
@@ -886,9 +952,11 @@ class _RoundBtn extends StatelessWidget {
           shape: BoxShape.circle,
           border: Border.all(color: AppColors.separator, width: 0.5),
         ),
-        child: Icon(icon,
-            size: 16,
-            color: enabled ? AppColors.ink : AppColors.tertiaryLabel),
+        child: Icon(
+          icon,
+          size: 16,
+          color: enabled ? AppColors.ink : AppColors.tertiaryLabel,
+        ),
       ),
     );
   }
@@ -916,9 +984,13 @@ class _ReviewRow extends StatelessWidget {
         children: [
           Icon(icon, size: 18, color: AppColors.secondaryLabel),
           const SizedBox(width: AppSpacing.md),
-          Text(label,
-              style: const TextStyle(
-                  color: AppColors.secondaryLabel, fontSize: 13)),
+          Text(
+            label,
+            style: const TextStyle(
+              color: AppColors.secondaryLabel,
+              fontSize: 13,
+            ),
+          ),
           const Spacer(),
           Flexible(
             child: Text(

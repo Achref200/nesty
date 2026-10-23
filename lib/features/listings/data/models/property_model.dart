@@ -39,9 +39,11 @@ class PropertyModel extends Property {
     super.rules,
     super.pricing,
     super.conditions,
+    super.isDemo,
   });
 
   factory PropertyModel.fromMap(Map<String, dynamic> map) {
+    final isDemo = map['is_demo'] == true;
     return PropertyModel(
       id: map['id'].toString(),
       title: map['title'] as String? ?? '',
@@ -79,6 +81,7 @@ class PropertyModel extends Property {
       conditions: BookingConditions.fromMap(
         _jsonMap(map['booking_conditions']),
       ),
+      isDemo: isDemo,
     );
   }
 
